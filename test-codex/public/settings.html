@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>每日学习助手 | 设置</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+  <header class="site-header site-shell">
+    <a class="brand" href="/">
+      <span class="brand-kicker">&gt; profile settings</span>
+      <strong>每日学习助手</strong>
+    </a>
+    <nav class="nav-row">
+      <a class="nav-link" href="/">首页</a>
+      <a class="nav-link" data-email-link="/today" href="/today">今日学习</a>
+      <a class="nav-link" data-email-link="/history" href="/history">学习记录</a>
+      <a class="nav-link" data-email-link="/settings" href="/settings">设置</a>
+    </nav>
+  </header>
+
+  <main class="main site-shell settings-shell">
+    <section id="settings-empty" class="card center-note" hidden>
+      <h1 class="section-title">未检测到邮箱</h1>
+      <p class="muted">请先在本页填写并保存设置。</p>
+      <p><a class="btn" href="/settings"><span>去设置</span></a></p>
+    </section>
+
+    <section id="settings-content" class="card" hidden>
+      <p class="tiny">&gt; settings</p>
+      <h1 class="terminal-title">学习设置</h1>
+      <form id="settings-form">
+        <div class="field">
+          <label class="label" for="email">接收邮箱</label>
+          <input class="input" id="email" type="email" required>
+        </div>
+
+        <div class="field">
+          <span class="label">学习类型（可多选）</span>
+          <div id="type-choices" class="chip-row">
+            <button class="chip" type="button" data-type="spoken">地道口语表达</button>
+            <button class="chip" type="button" data-type="vocabulary">单词记忆</button>
+            <button class="chip" type="button" data-type="finance">每日财经资讯</button>
+            <button class="chip" type="button" data-type="ai_news">每日AI前沿资讯</button>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label class="label" for="daily-count">每日条数</label>
+            <select class="select" id="daily-count">
+              <option value="5">5 条</option>
+              <option value="6">6 条</option>
+              <option value="7">7 条</option>
+              <option value="8">8 条</option>
+              <option value="9">9 条</option>
+              <option value="10">10 条</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label" for="send-time">每日发送时间</label>
+            <input class="input" id="send-time" type="time" value="07:30">
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label class="label" for="review-time">晚间复习时间</label>
+            <input class="input" id="review-time" type="time" value="20:30">
+          </div>
+          <div class="field">
+            <label class="label" for="review-enabled">是否开启晚间复习</label>
+            <select class="select" id="review-enabled">
+              <option value="true">开启</option>
+              <option value="false">关闭</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label class="label" for="backup-channel">备用渠道</label>
+            <select class="select" id="backup-channel">
+              <option value="wechat">微信</option>
+              <option value="telegram">Telegram</option>
+              <option value="feishu">飞书</option>
+              <option value="other">其他</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label" for="backup-contact">备用联系方式</label>
+            <input class="input" id="backup-contact" type="text">
+          </div>
+        </div>
+
+        <button class="btn" type="submit"><span>返回并前往今日学习</span></button>
+      </form>
+    </section>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/settings.js"></script>
+</body>
+</html>

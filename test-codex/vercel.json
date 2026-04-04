@@ -1,0 +1,26 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/onboarding",
+      "destination": "/settings.html"
+    },
+    {
+      "source": "/today",
+      "destination": "/today.html"
+    },
+    {
+      "source": "/history",
+      "destination": "/history.html"
+    },
+    {
+      "source": "/settings",
+      "destination": "/settings.html"
+    },
+    {
+      "source": "/api/:match*",
+      "destination": "/api/[...slug]"
+    }
+  ]
+}

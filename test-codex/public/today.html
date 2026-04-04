@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>每日学习助手 | 今日学习</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+  <header class="site-header site-shell">
+    <a class="brand" href="/">
+      <span class="brand-kicker">&gt; today workspace</span>
+      <strong>每日学习助手</strong>
+    </a>
+    <nav class="nav-row">
+      <a class="nav-link" href="/">首页</a>
+      <a class="nav-link" data-email-link="/today" href="/today">今日学习</a>
+      <a class="nav-link" data-email-link="/history" href="/history">学习记录</a>
+      <a class="nav-link" data-email-link="/settings" href="/settings">设置</a>
+    </nav>
+  </header>
+
+  <main class="main site-shell">
+    <section id="missing-email" class="card center-note" hidden>
+      <h1 class="section-title">还没有学习账号</h1>
+      <p class="muted">请先在设置页填写邮箱与学习偏好。</p>
+      <p><a class="btn" href="/settings"><span>去设置</span></a></p>
+    </section>
+
+    <section id="today-content" class="today-shell" hidden>
+      <article class="card">
+        <p class="tiny">&gt; daily status</p>
+        <h1 class="terminal-title">今日学习</h1>
+        <div class="stat-grid">
+          <div class="stat-item"><span>连续学习</span><b id="streak">0 天</b></div>
+          <div class="stat-item"><span>今日完成</span><b id="done-flag">未完成</b></div>
+          <div class="stat-item"><span>完成率</span><b id="completion-rate">0%</b></div>
+          <div class="stat-item"><span>下次提醒</span><b id="next-reminder">--:--</b></div>
+        </div>
+        <div class="today-actions" style="margin-top:12px;">
+          <button id="complete-btn" class="btn"><span>完成今日学习</span></button>
+          <button id="send-morning-btn" class="btn btn-alt"><span>发送今日内容</span></button>
+          <button id="send-evening-btn" class="btn btn-alt"><span>发送晚间复习</span></button>
+        </div>
+      </article>
+
+      <article class="card review-panel" id="review-panel">
+        <h2 class="section-title">晚间复习</h2>
+        <form id="quiz-form" class="list"></form>
+      </article>
+    </section>
+
+    <section id="today-items-card" class="card" hidden>
+      <h2 class="section-title">今日学习内容</h2>
+      <div id="today-items" class="list"></div>
+    </section>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/today.js"></script>
+</body>
+</html>
