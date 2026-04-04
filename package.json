@@ -1,0 +1,13 @@
+{
+  "name": "daily-study-buddy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A demo app for daily study emails and quiz tracking.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

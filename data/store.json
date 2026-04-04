@@ -1,0 +1,2189 @@
+{
+  "smtp": {
+    "enabled": true,
+    "host": "smtp.qq.com",
+    "port": 465,
+    "secure": true,
+    "user": "2630896019@qq.com",
+    "pass": "pheswnsjmjjveaii",
+    "from": "2630896019@qq.com"
+  },
+  "progress": {
+    "nextContentIndex": 1,
+    "typeCursor": {
+      "spoken": 0,
+      "vocabulary": 1,
+      "finance": 1
+    }
+  },
+  "users": {
+    "test@example.com": {
+      "email": "test@example.com",
+      "preferences": {
+        "dailyCount": 3,
+        "learningTypes": [
+          "spoken"
+        ],
+        "customTopic": "",
+        "sendTime": "09:00",
+        "reviewEnabled": true,
+        "reviewTime": "18:00",
+        "backupChannel": "wechat",
+        "backupContact": ""
+      },
+      "sessions": [],
+      "currentLevel": 1
+    },
+    "demo@example.com": {
+      "email": "demo@example.com",
+      "preferences": {
+        "dailyCount": 2,
+        "learningTypes": [
+          "spoken"
+        ],
+        "customTopic": "",
+        "sendTime": "09:00",
+        "reviewEnabled": true,
+        "reviewTime": "18:00",
+        "backupChannel": "wechat",
+        "backupContact": ""
+      },
+      "sessions": [
+        {
+          "id": "1775028270147_5128c9",
+          "email": "demo@example.com",
+          "date": "2026-04-01",
+          "createdAt": "2026-04-01T07:24:30.147Z",
+          "mode": "manual",
+          "contentType": "travel",
+          "items": [
+            {
+              "type": "travel",
+              "english": "Is this seat taken?",
+              "chinese": "这个座位有人吗？",
+              "scene": "公共场合",
+              "example": "Excuse me, is this seat taken?"
+            },
+            {
+              "type": "travel",
+              "english": "I'd like to check in.",
+              "chinese": "我想办理入住。",
+              "scene": "酒店机场",
+              "example": "Hi, I'd like to check in. I have a reservation."
+            }
+          ],
+          "quiz": {
+            "questions": [
+              {
+                "id": "1775028270147_5128c9-1",
+                "prompt": "这句内容的正确中文意思是哪个？ Is this seat taken?",
+                "answer": "这个座位有人吗？",
+                "options": [
+                  "感谢你的耐心。",
+                  "请查收下面的附件。",
+                  "这个座位有人吗？",
+                  "可持续的"
+                ]
+              },
+              {
+                "id": "1775028270147_5128c9-2",
+                "prompt": "这句内容的正确中文意思是哪个？ I'd like to check in.",
+                "answer": "我想办理入住。",
+                "options": [
+                  "我想办理入住。",
+                  "请查收下面的附件。",
+                  "我明天再回复你。",
+                  "可持续的"
+                ]
+              }
+            ]
+          },
+          "quizSentAt": "2026-04-01T10:00:17.942Z",
+          "quizMode": "auto",
+          "quizResult": null,
+          "delivery": {
+            "morning": {
+              "id": "1775028271771_7bb52a",
+              "createdAt": "2026-04-01T07:24:31.771Z",
+              "subject": "每日学习小助手｜2026-04-01 早间学习",
+              "mode": "smtp"
+            },
+            "evening": {
+              "id": "1775037617941_bb69ba",
+              "createdAt": "2026-04-01T10:00:17.942Z",
+              "subject": "每日学习小助手｜2026-04-01 晚间测验",
+              "mode": "smtp"
+            }
+          }
+        },
+        {
+          "id": "1775028271775_c8c026",
+          "email": "demo@example.com",
+          "date": "2026-04-01",
+          "createdAt": "2026-04-01T07:24:31.775Z",
+          "mode": "manual",
+          "contentType": "travel",
+          "items": [
+            {
+              "type": "travel",
+              "english": "Is this seat taken?",
+              "chinese": "这个座位有人吗？",
+              "scene": "公共场合",
+              "example": "Excuse me, is this seat taken?"
+            },
+            {
+              "type": "travel",
+              "english": "I'd like to check in.",
+              "chinese": "我想办理入住。",
+              "scene": "酒店机场",
+              "example": "Hi, I'd like to check in. I have a reservation."
+            }
+          ],
+          "quiz": {
+            "questions": [
+              {
+                "id": "1775028271775_c8c026-1",
+                "prompt": "这句内容的正确中文意思是哪个？ Is this seat taken?",
+                "answer": "这个座位有人吗？",
+                "options": [
+                  "我们到时候随机应变吧。",
+                  "我明天再回复你。",
+                  "这个座位有人吗？",
+                  "准确的"
+                ]
+              },
+              {
+                "id": "1775028271775_c8c026-2",
+                "prompt": "这句内容的正确中文意思是哪个？ I'd like to check in.",
+                "answer": "我想办理入住。",
+                "options": [
+                  "这个座位有人吗？",
+                  "准确的",
+                  "我明天再回复你。",
+                  "我想办理入住。"
+                ]
+              }
+            ]
+          },
+          "quizSentAt": "2026-04-01T07:24:35.402Z",
+          "quizMode": "manual",
+          "quizResult": null,
+          "delivery": {
+            "morning": {
+              "id": "1775028273432_0d4acb",
+              "createdAt": "2026-04-01T07:24:33.432Z",
+              "subject": "每日学习小助手｜2026-04-01 早间学习",
+              "mode": "smtp"
+            },
+            "evening": {
+              "id": "1775028275402_64f532",
+              "createdAt": "2026-04-01T07:24:35.402Z",
+              "subject": "每日学习小助手｜2026-04-01 晚间测验",
+              "mode": "smtp"
+            }
+          }
+        }
+      ],
+      "currentLevel": 1
+    },
+    "13287615996@163.com": {
+      "email": "13287615996@163.com",
+      "preferences": {
+        "dailyCount": 3,
+        "learningTypes": [
+          "spoken",
+          "vocabulary",
+          "finance"
+        ],
+        "customTopic": "基金入门",
+        "sendTime": "08:30",
+        "reviewEnabled": true,
+        "reviewTime": "20:30",
+        "backupChannel": "wechat",
+        "backupContact": "13287615996"
+      },
+      "sessions": [
+        {
+          "id": "1775028407536_1f0252",
+          "email": "13287615996@163.com",
+          "date": "2026-04-01",
+          "createdAt": "2026-04-01T07:26:47.536Z",
+          "mode": "manual",
+          "contentType": "business",
+          "items": [
+            {
+              "type": "business",
+              "english": "Let's align on the priorities.",
+              "chinese": "我们先对齐一下优先级。",
+              "scene": "会议沟通",
+              "example": "Before we start, let's align on the priorities."
+            },
+            {
+              "type": "business",
+              "english": "I'll circle back tomorrow.",
+              "chinese": "我明天再回复你。",
+              "scene": "工作跟进",
+              "example": "I need to confirm the details, so I'll circle back tomorrow."
+            },
+            {
+              "type": "business",
+              "english": "Let's align on the priorities.",
+              "chinese": "我们先对齐一下优先级。",
+              "scene": "会议沟通",
+              "example": "Before we start, let's align on the priorities."
+            },
+            {
+              "type": "business",
+              "english": "I'll circle back tomorrow.",
+              "chinese": "我明天再回复你。",
+              "scene": "工作跟进",
+              "example": "I need to confirm the details, so I'll circle back tomorrow."
+            },
+            {
+              "type": "business",
+              "english": "Let's align on the priorities.",
+              "chinese": "我们先对齐一下优先级。",
+              "scene": "会议沟通",
+              "example": "Before we start, let's align on the priorities."
+            }
+          ],
+          "quiz": {
+            "questions": [
+              {
+                "id": "1775028407536_1f0252-1",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "options": [
+                  "我们先对齐一下优先级。",
+                  "感谢你的耐心。",
+                  "我明天再回复你。",
+                  "可持续的"
+                ]
+              },
+              {
+                "id": "1775028407536_1f0252-2",
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "我明天再回复你。",
+                "options": [
+                  "我们先对齐一下优先级。",
+                  "这就说得通了。",
+                  "准确的",
+                  "我明天再回复你。"
+                ]
+              },
+              {
+                "id": "1775028407536_1f0252-3",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "options": [
+                  "我还在摸索当中。",
+                  "准确的",
+                  "我们到时候随机应变吧。",
+                  "我们先对齐一下优先级。"
+                ]
+              },
+              {
+                "id": "1775028407536_1f0252-4",
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "我明天再回复你。",
+                "options": [
+                  "我想办理入住。",
+                  "我们先对齐一下优先级。",
+                  "我还在摸索当中。",
+                  "我明天再回复你。"
+                ]
+              },
+              {
+                "id": "1775028407536_1f0252-5",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "options": [
+                  "我们先对齐一下优先级。",
+                  "我们到时候随机应变吧。",
+                  "感谢你的耐心。",
+                  "我还在摸索当中。"
+                ]
+              }
+            ]
+          },
+          "quizSentAt": "2026-04-01T07:27:16.632Z",
+          "quizMode": "manual",
+          "quizResult": null,
+          "delivery": {
+            "morning": {
+              "id": "1775028409192_27182e",
+              "createdAt": "2026-04-01T07:26:49.192Z",
+              "subject": "每日学习小助手｜2026-04-01 早间学习",
+              "mode": "smtp"
+            },
+            "evening": {
+              "id": "1775028436632_b58ca8",
+              "createdAt": "2026-04-01T07:27:16.632Z",
+              "subject": "每日学习小助手｜2026-04-01 晚间测验",
+              "mode": "smtp"
+            }
+          }
+        },
+        {
+          "id": "1775028453454_eae6b9",
+          "email": "13287615996@163.com",
+          "date": "2026-04-01",
+          "createdAt": "2026-04-01T07:27:33.454Z",
+          "mode": "manual",
+          "contentType": "spoken",
+          "items": [
+            {
+              "type": "spoken",
+              "english": "I'm still figuring it out.",
+              "chinese": "我还在摸索当中。",
+              "scene": "谈计划时表达尚未确定",
+              "example": "I haven't decided on the final plan yet. I'm still figuring it out."
+            },
+            {
+              "type": "spoken",
+              "english": "Let's play it by ear.",
+              "chinese": "我们到时候随机应变吧。",
+              "scene": "计划不确定时",
+              "example": "If the weather changes, let's play it by ear."
+            },
+            {
+              "type": "spoken",
+              "english": "That makes sense.",
+              "chinese": "这就说得通了。",
+              "scene": "对别人解释表示认同",
+              "example": "Oh, you took a taxi because it was raining. That makes sense."
+            },
+            {
+              "type": "spoken",
+              "english": "I'm still figuring it out.",
+              "chinese": "我还在摸索当中。",
+              "scene": "谈计划时表达尚未确定",
+              "example": "I haven't decided on the final plan yet. I'm still figuring it out."
+            },
+            {
+              "type": "spoken",
+              "english": "Let's play it by ear.",
+              "chinese": "我们到时候随机应变吧。",
+              "scene": "计划不确定时",
+              "example": "If the weather changes, let's play it by ear."
+            }
+          ],
+          "quiz": {
+            "questions": [
+              {
+                "id": "1775028453454_eae6b9-1",
+                "prompt": "这句内容的正确中文意思是哪个？ I'm still figuring it out.",
+                "answer": "我还在摸索当中。",
+                "options": [
+                  "我明天再回复你。",
+                  "我还在摸索当中。",
+                  "请查收下面的附件。",
+                  "感谢你的耐心。"
+                ]
+              },
+              {
+                "id": "1775028453454_eae6b9-2",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's play it by ear.",
+                "answer": "我们到时候随机应变吧。",
+                "options": [
+                  "准确的",
+                  "请查收下面的附件。",
+                  "我们到时候随机应变吧。",
+                  "这就说得通了。"
+                ]
+              },
+              {
+                "id": "1775028453454_eae6b9-3",
+                "prompt": "这句内容的正确中文意思是哪个？ That makes sense.",
+                "answer": "这就说得通了。",
+                "options": [
+                  "我还在摸索当中。",
+                  "这个座位有人吗？",
+                  "这就说得通了。",
+                  "我想办理入住。"
+                ]
+              },
+              {
+                "id": "1775028453454_eae6b9-4",
+                "prompt": "这句内容的正确中文意思是哪个？ I'm still figuring it out.",
+                "answer": "我还在摸索当中。",
+                "options": [
+                  "我想办理入住。",
+                  "我明天再回复你。",
+                  "我还在摸索当中。",
+                  "请查收下面的附件。"
+                ]
+              },
+              {
+                "id": "1775028453454_eae6b9-5",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's play it by ear.",
+                "answer": "我们到时候随机应变吧。",
+                "options": [
+                  "我还在摸索当中。",
+                  "我们到时候随机应变吧。",
+                  "我明天再回复你。",
+                  "我想办理入住。"
+                ]
+              }
+            ]
+          },
+          "quizSentAt": "2026-04-01T07:51:55.305Z",
+          "quizMode": "manual",
+          "quizResult": null,
+          "delivery": {
+            "morning": {
+              "id": "1775028455016_39d2c3",
+              "createdAt": "2026-04-01T07:27:35.016Z",
+              "subject": "每日学习小助手｜2026-04-01 早间学习",
+              "mode": "smtp"
+            },
+            "evening": {
+              "id": "1775029915305_98f5cd",
+              "createdAt": "2026-04-01T07:51:55.305Z",
+              "subject": "每日学习小助手｜2026-04-01 晚间测验",
+              "mode": "smtp"
+            }
+          }
+        },
+        {
+          "id": "1775028476439_a20b86",
+          "email": "13287615996@163.com",
+          "date": "2026-04-01",
+          "createdAt": "2026-04-01T07:27:56.439Z",
+          "mode": "manual",
+          "contentType": "business",
+          "items": [
+            {
+              "type": "business",
+              "english": "Let's align on the priorities.",
+              "chinese": "我们先对齐一下优先级。",
+              "scene": "会议沟通",
+              "example": "Before we start, let's align on the priorities."
+            },
+            {
+              "type": "business",
+              "english": "I'll circle back tomorrow.",
+              "chinese": "我明天再回复你。",
+              "scene": "工作跟进",
+              "example": "I need to confirm the details, so I'll circle back tomorrow."
+            },
+            {
+              "type": "business",
+              "english": "Let's align on the priorities.",
+              "chinese": "我们先对齐一下优先级。",
+              "scene": "会议沟通",
+              "example": "Before we start, let's align on the priorities."
+            },
+            {
+              "type": "business",
+              "english": "I'll circle back tomorrow.",
+              "chinese": "我明天再回复你。",
+              "scene": "工作跟进",
+              "example": "I need to confirm the details, so I'll circle back tomorrow."
+            },
+            {
+              "type": "business",
+              "english": "Let's align on the priorities.",
+              "chinese": "我们先对齐一下优先级。",
+              "scene": "会议沟通",
+              "example": "Before we start, let's align on the priorities."
+            }
+          ],
+          "quiz": {
+            "questions": [
+              {
+                "id": "1775028476439_a20b86-1",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "options": [
+                  "我们先对齐一下优先级。",
+                  "可持续的",
+                  "请查收下面的附件。",
+                  "准确的"
+                ]
+              },
+              {
+                "id": "1775028476439_a20b86-2",
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "我明天再回复你。",
+                "options": [
+                  "我明天再回复你。",
+                  "可持续的",
+                  "感谢你的耐心。",
+                  "我还在摸索当中。"
+                ]
+              },
+              {
+                "id": "1775028476439_a20b86-3",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "options": [
+                  "请查收下面的附件。",
+                  "可持续的",
+                  "我们先对齐一下优先级。",
+                  "这就说得通了。"
+                ]
+              },
+              {
+                "id": "1775028476439_a20b86-4",
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "我明天再回复你。",
+                "options": [
+                  "这个座位有人吗？",
+                  "可持续的",
+                  "我明天再回复你。",
+                  "准确的"
+                ]
+              },
+              {
+                "id": "1775028476439_a20b86-5",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "options": [
+                  "可持续的",
+                  "我想办理入住。",
+                  "我们先对齐一下优先级。",
+                  "我还在摸索当中。"
+                ]
+              }
+            ]
+          },
+          "quizSentAt": "2026-04-01T07:51:03.989Z",
+          "quizMode": "auto",
+          "quizResult": {
+            "submittedAt": "2026-04-01T07:33:36.417Z",
+            "score": 2,
+            "total": 5,
+            "accuracy": 40,
+            "answers": [
+              {
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "correctAnswer": "我们先对齐一下优先级。",
+                "isCorrect": true
+              },
+              {
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "我明天再回复你。",
+                "correctAnswer": "我明天再回复你。",
+                "isCorrect": true
+              },
+              {
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "可持续的",
+                "correctAnswer": "我们先对齐一下优先级。",
+                "isCorrect": false
+              },
+              {
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "可持续的",
+                "correctAnswer": "我明天再回复你。",
+                "isCorrect": false
+              },
+              {
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "可持续的",
+                "correctAnswer": "我们先对齐一下优先级。",
+                "isCorrect": false
+              }
+            ]
+          },
+          "delivery": {
+            "morning": {
+              "id": "1775028478105_b05c4d",
+              "createdAt": "2026-04-01T07:27:58.105Z",
+              "subject": "每日学习小助手｜2026-04-01 早间学习",
+              "mode": "smtp"
+            },
+            "evening": {
+              "id": "1775029863989_fd8860",
+              "createdAt": "2026-04-01T07:51:03.989Z",
+              "subject": "每日学习小助手｜2026-04-01 晚间测验",
+              "mode": "smtp"
+            }
+          }
+        },
+        {
+          "id": "1775031049585_31ea4c",
+          "email": "13287615996@163.com",
+          "date": "2026-04-01",
+          "createdAt": "2026-04-01T08:10:49.585Z",
+          "mode": "manual",
+          "contentType": "business",
+          "items": [
+            {
+              "type": "business",
+              "english": "Let's align on the priorities.",
+              "chinese": "我们先对齐一下优先级。",
+              "scene": "会议沟通",
+              "example": "Before we start, let's align on the priorities."
+            },
+            {
+              "type": "business",
+              "english": "I'll circle back tomorrow.",
+              "chinese": "我明天再回复你。",
+              "scene": "工作跟进",
+              "example": "I need to confirm the details, so I'll circle back tomorrow."
+            },
+            {
+              "type": "business",
+              "english": "Let's align on the priorities.",
+              "chinese": "我们先对齐一下优先级。",
+              "scene": "会议沟通",
+              "example": "Before we start, let's align on the priorities."
+            },
+            {
+              "type": "business",
+              "english": "I'll circle back tomorrow.",
+              "chinese": "我明天再回复你。",
+              "scene": "工作跟进",
+              "example": "I need to confirm the details, so I'll circle back tomorrow."
+            },
+            {
+              "type": "business",
+              "english": "Let's align on the priorities.",
+              "chinese": "我们先对齐一下优先级。",
+              "scene": "会议沟通",
+              "example": "Before we start, let's align on the priorities."
+            }
+          ],
+          "quiz": {
+            "questions": [
+              {
+                "id": "1775031049585_31ea4c-1",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "options": [
+                  "我还在摸索当中。",
+                  "感谢你的耐心。",
+                  "请查收下面的附件。",
+                  "我们先对齐一下优先级。"
+                ]
+              },
+              {
+                "id": "1775031049585_31ea4c-2",
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "我明天再回复你。",
+                "options": [
+                  "可持续的",
+                  "感谢你的耐心。",
+                  "我明天再回复你。",
+                  "我想办理入住。"
+                ]
+              },
+              {
+                "id": "1775031049585_31ea4c-3",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "options": [
+                  "我想办理入住。",
+                  "我们先对齐一下优先级。",
+                  "这个座位有人吗？",
+                  "我明天再回复你。"
+                ]
+              },
+              {
+                "id": "1775031049585_31ea4c-4",
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "我明天再回复你。",
+                "options": [
+                  "我明天再回复你。",
+                  "我还在摸索当中。",
+                  "我们先对齐一下优先级。",
+                  "准确的"
+                ]
+              },
+              {
+                "id": "1775031049585_31ea4c-5",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "options": [
+                  "可持续的",
+                  "这就说得通了。",
+                  "我明天再回复你。",
+                  "我们先对齐一下优先级。"
+                ]
+              }
+            ]
+          },
+          "quizSentAt": "2026-04-01T08:10:59.968Z",
+          "quizMode": "manual",
+          "quizResult": null,
+          "delivery": {
+            "morning": {
+              "id": "1775031051320_ed0119",
+              "createdAt": "2026-04-01T08:10:51.320Z",
+              "subject": "每日学习小助手｜2026-04-01 早间学习",
+              "mode": "smtp"
+            },
+            "evening": {
+              "id": "1775031059968_6e1112",
+              "createdAt": "2026-04-01T08:10:59.968Z",
+              "subject": "每日学习小助手｜2026-04-01 晚间测验",
+              "mode": "smtp"
+            }
+          }
+        },
+        {
+          "id": "1775032753213_9ceba9",
+          "email": "13287615996@163.com",
+          "date": "2026-04-01",
+          "createdAt": "2026-04-01T08:39:13.213Z",
+          "mode": "manual",
+          "contentType": "business",
+          "items": [
+            {
+              "type": "business",
+              "english": "I'll circle back tomorrow.",
+              "chinese": "我明天再回复你。",
+              "scene": "工作跟进",
+              "example": "I need to confirm the details, so I'll circle back tomorrow."
+            },
+            {
+              "type": "business",
+              "english": "Let's align on the priorities.",
+              "chinese": "我们先对齐一下优先级。",
+              "scene": "会议沟通",
+              "example": "Before we start, let's align on the priorities."
+            },
+            {
+              "type": "business",
+              "english": "I'll circle back tomorrow.",
+              "chinese": "我明天再回复你。",
+              "scene": "工作跟进",
+              "example": "I need to confirm the details, so I'll circle back tomorrow."
+            },
+            {
+              "type": "business",
+              "english": "Let's align on the priorities.",
+              "chinese": "我们先对齐一下优先级。",
+              "scene": "会议沟通",
+              "example": "Before we start, let's align on the priorities."
+            },
+            {
+              "type": "business",
+              "english": "I'll circle back tomorrow.",
+              "chinese": "我明天再回复你。",
+              "scene": "工作跟进",
+              "example": "I need to confirm the details, so I'll circle back tomorrow."
+            }
+          ],
+          "quiz": {
+            "questions": [
+              {
+                "id": "1775032753213_9ceba9-1",
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "我明天再回复你。",
+                "options": [
+                  "我明天再回复你。",
+                  "我们到时候随机应变吧。",
+                  "我想办理入住。",
+                  "这就说得通了。"
+                ]
+              },
+              {
+                "id": "1775032753213_9ceba9-2",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "options": [
+                  "这个座位有人吗？",
+                  "我明天再回复你。",
+                  "我们先对齐一下优先级。",
+                  "请查收下面的附件。"
+                ]
+              },
+              {
+                "id": "1775032753213_9ceba9-3",
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "我明天再回复你。",
+                "options": [
+                  "这个座位有人吗？",
+                  "我明天再回复你。",
+                  "我们先对齐一下优先级。",
+                  "请查收下面的附件。"
+                ]
+              },
+              {
+                "id": "1775032753213_9ceba9-4",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "options": [
+                  "我们先对齐一下优先级。",
+                  "感谢你的耐心。",
+                  "我们到时候随机应变吧。",
+                  "这就说得通了。"
+                ]
+              },
+              {
+                "id": "1775032753213_9ceba9-5",
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "我明天再回复你。",
+                "options": [
+                  "我们到时候随机应变吧。",
+                  "我还在摸索当中。",
+                  "可持续的",
+                  "我明天再回复你。"
+                ]
+              }
+            ]
+          },
+          "quizSentAt": null,
+          "quizMode": null,
+          "quizResult": {
+            "submittedAt": "2026-04-01T08:39:35.237Z",
+            "score": 2,
+            "total": 5,
+            "accuracy": 40,
+            "answers": [
+              {
+                "questionId": "1775032753213_9ceba9-1",
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "我明天再回复你。",
+                "correctAnswer": "我明天再回复你。",
+                "isCorrect": true
+              },
+              {
+                "questionId": "1775032753213_9ceba9-2",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "correctAnswer": "我们先对齐一下优先级。",
+                "isCorrect": true
+              },
+              {
+                "questionId": "1775032753213_9ceba9-3",
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "这个座位有人吗？",
+                "correctAnswer": "我明天再回复你。",
+                "isCorrect": false
+              },
+              {
+                "questionId": "1775032753213_9ceba9-4",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "这就说得通了。",
+                "correctAnswer": "我们先对齐一下优先级。",
+                "isCorrect": false
+              },
+              {
+                "questionId": "1775032753213_9ceba9-5",
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "我们到时候随机应变吧。",
+                "correctAnswer": "我明天再回复你。",
+                "isCorrect": false
+              }
+            ]
+          },
+          "delivery": {
+            "morning": {
+              "id": "1775032754625_969906",
+              "createdAt": "2026-04-01T08:39:14.625Z",
+              "subject": "每日学习小助手｜2026-04-01 早间学习",
+              "mode": "smtp"
+            },
+            "evening": null
+          }
+        },
+        {
+          "id": "1775035604079_4af95b",
+          "email": "13287615996@163.com",
+          "date": "2026-04-01",
+          "createdAt": "2026-04-01T09:26:44.079Z",
+          "mode": "manual",
+          "contentType": "business",
+          "items": [
+            {
+              "type": "business",
+              "english": "Let's align on the priorities.",
+              "chinese": "我们先对齐一下优先级。",
+              "scene": "会议沟通",
+              "example": "Before we start, let's align on the priorities."
+            },
+            {
+              "type": "business",
+              "english": "I'll circle back tomorrow.",
+              "chinese": "我明天再回复你。",
+              "scene": "工作跟进",
+              "example": "I need to confirm the details, so I'll circle back tomorrow."
+            },
+            {
+              "type": "business",
+              "english": "Let's align on the priorities.",
+              "chinese": "我们先对齐一下优先级。",
+              "scene": "会议沟通",
+              "example": "Before we start, let's align on the priorities."
+            },
+            {
+              "type": "business",
+              "english": "I'll circle back tomorrow.",
+              "chinese": "我明天再回复你。",
+              "scene": "工作跟进",
+              "example": "I need to confirm the details, so I'll circle back tomorrow."
+            },
+            {
+              "type": "business",
+              "english": "Let's align on the priorities.",
+              "chinese": "我们先对齐一下优先级。",
+              "scene": "会议沟通",
+              "example": "Before we start, let's align on the priorities."
+            }
+          ],
+          "quiz": {
+            "questions": [
+              {
+                "id": "1775035604079_4af95b-1",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "options": [
+                  "这就说得通了。",
+                  "请查收下面的附件。",
+                  "我们先对齐一下优先级。",
+                  "可持续的"
+                ]
+              },
+              {
+                "id": "1775035604079_4af95b-2",
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "我明天再回复你。",
+                "options": [
+                  "感谢你的耐心。",
+                  "我明天再回复你。",
+                  "我还在摸索当中。",
+                  "这个座位有人吗？"
+                ]
+              },
+              {
+                "id": "1775035604079_4af95b-3",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "options": [
+                  "我们先对齐一下优先级。",
+                  "请查收下面的附件。",
+                  "我还在摸索当中。",
+                  "这个座位有人吗？"
+                ]
+              },
+              {
+                "id": "1775035604079_4af95b-4",
+                "prompt": "这句内容的正确中文意思是哪个？ I'll circle back tomorrow.",
+                "answer": "我明天再回复你。",
+                "options": [
+                  "我们到时候随机应变吧。",
+                  "这个座位有人吗？",
+                  "我明天再回复你。",
+                  "准确的"
+                ]
+              },
+              {
+                "id": "1775035604079_4af95b-5",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's align on the priorities.",
+                "answer": "我们先对齐一下优先级。",
+                "options": [
+                  "我们先对齐一下优先级。",
+                  "我还在摸索当中。",
+                  "可持续的",
+                  "感谢你的耐心。"
+                ]
+              }
+            ]
+          },
+          "quizSentAt": null,
+          "quizMode": null,
+          "quizResult": null,
+          "delivery": {
+            "morning": {
+              "id": "1775035606396_beb0b9",
+              "createdAt": "2026-04-01T09:26:46.396Z",
+              "subject": "每日学习小助手｜2026-04-01 早间学习",
+              "mode": "smtp"
+            },
+            "evening": null
+          }
+        },
+        {
+          "id": "1775196281913_f37bbc",
+          "email": "13287615996@163.com",
+          "date": "2026-04-03",
+          "createdAt": "2026-04-03T06:04:41.913Z",
+          "mode": "manual",
+          "learningTypes": [
+            "spoken"
+          ],
+          "customTopic": "基金入门",
+          "difficultyLevel": 1,
+          "generationMode": "curated-fallback",
+          "items": [
+            {
+              "id": "spoken-2",
+              "type": "spoken",
+              "level": 1,
+              "headline": "I'm still figuring it out.",
+              "chinese": "我还在摸索中。",
+              "phonetic": "",
+              "scene": "计划尚未完全明确时",
+              "example": "I haven't chosen a final topic yet. I'm still figuring it out.",
+              "summary": "",
+              "takeaway": "",
+              "keywords": [],
+              "source": "database"
+            },
+            {
+              "id": "spoken-1",
+              "type": "spoken",
+              "level": 1,
+              "headline": "That makes sense.",
+              "chinese": "这就说得通了。",
+              "phonetic": "",
+              "scene": "理解对方解释后的回应",
+              "example": "You left early because of the traffic. That makes sense.",
+              "summary": "",
+              "takeaway": "",
+              "keywords": [],
+              "source": "database"
+            },
+            {
+              "id": "spoken-2",
+              "type": "spoken",
+              "level": 1,
+              "headline": "I'm still figuring it out.",
+              "chinese": "我还在摸索中。",
+              "phonetic": "",
+              "scene": "计划尚未完全明确时",
+              "example": "I haven't chosen a final topic yet. I'm still figuring it out.",
+              "summary": "",
+              "takeaway": "",
+              "keywords": [],
+              "source": "database"
+            },
+            {
+              "id": "spoken-1",
+              "type": "spoken",
+              "level": 1,
+              "headline": "That makes sense.",
+              "chinese": "这就说得通了。",
+              "phonetic": "",
+              "scene": "理解对方解释后的回应",
+              "example": "You left early because of the traffic. That makes sense.",
+              "summary": "",
+              "takeaway": "",
+              "keywords": [],
+              "source": "database"
+            },
+            {
+              "id": "spoken-2",
+              "type": "spoken",
+              "level": 1,
+              "headline": "I'm still figuring it out.",
+              "chinese": "我还在摸索中。",
+              "phonetic": "",
+              "scene": "计划尚未完全明确时",
+              "example": "I haven't chosen a final topic yet. I'm still figuring it out.",
+              "summary": "",
+              "takeaway": "",
+              "keywords": [],
+              "source": "database"
+            }
+          ],
+          "reviewEligible": true,
+          "completedAt": null,
+          "completionSource": null,
+          "quiz": {
+            "questions": [
+              {
+                "id": "1775196281913_f37bbc-1",
+                "type": "choice",
+                "prompt": "这句口语更贴近哪一种中文含义？I'm still figuring it out.",
+                "answer": "我还在摸索中。",
+                "options": [
+                  "我们一起过一遍吧。",
+                  "我还在摸索中。",
+                  "我们明天再回头看这个可以吗？",
+                  "我会稍微换个角度来表述。"
+                ],
+                "hint": "计划尚未完全明确时"
+              },
+              {
+                "id": "1775196281913_f37bbc-2",
+                "type": "text",
+                "prompt": "把这句表达翻译成中文：That makes sense.",
+                "answer": "这就说得通了。",
+                "hint": "理解对方解释后的回应"
+              },
+              {
+                "id": "1775196281913_f37bbc-3",
+                "type": "text",
+                "prompt": "根据中文写出更自然的英文表达：我还在摸索中。",
+                "answer": "I'm still figuring it out.",
+                "hint": "计划尚未完全明确时"
+              },
+              {
+                "id": "1775196281913_f37bbc-4",
+                "type": "choice",
+                "prompt": "这句口语更贴近哪一种中文含义？That makes sense.",
+                "answer": "这就说得通了。",
+                "options": [
+                  "我们明天再回头看这个可以吗？",
+                  "我还在摸索中。",
+                  "我们一起过一遍吧。",
+                  "这就说得通了。"
+                ],
+                "hint": "理解对方解释后的回应"
+              },
+              {
+                "id": "1775196281913_f37bbc-5",
+                "type": "text",
+                "prompt": "把这句表达翻译成中文：I'm still figuring it out.",
+                "answer": "我还在摸索中。",
+                "hint": "计划尚未完全明确时"
+              }
+            ]
+          },
+          "quizSentAt": "2026-04-03T07:43:21.134Z",
+          "quizMode": "manual",
+          "quizResult": null,
+          "delivery": {
+            "morning": {
+              "id": "1775201968062_8367ba",
+              "sentAt": "2026-04-03T07:39:28.062Z",
+              "subject": "每日学习助手｜2026-04-03 今日学习内容",
+              "opens": 0,
+              "clicks": 0,
+              "openedAt": null,
+              "clickedAt": null,
+              "mode": "smtp"
+            },
+            "evening": {
+              "id": "1775202201134_bccfed",
+              "sentAt": "2026-04-03T07:43:21.134Z",
+              "subject": "每日学习助手｜2026-04-03 晚间复习测试",
+              "opens": 0,
+              "clicks": 0,
+              "openedAt": null,
+              "clickedAt": null,
+              "mode": "smtp"
+            }
+          }
+        }
+      ],
+      "currentLevel": 1
+    },
+    "mailquiz@example.com": {
+      "email": "mailquiz@example.com",
+      "preferences": {
+        "dailyCount": 2,
+        "learningTypes": [
+          "spoken"
+        ],
+        "customTopic": "",
+        "sendTime": "09:00",
+        "reviewEnabled": true,
+        "reviewTime": "18:00",
+        "backupChannel": "wechat",
+        "backupContact": ""
+      },
+      "sessions": [
+        {
+          "id": "1775030269968_0ef142",
+          "email": "mailquiz@example.com",
+          "date": "2026-04-01",
+          "createdAt": "2026-04-01T07:57:49.968Z",
+          "mode": "manual",
+          "contentType": "spoken",
+          "items": [
+            {
+              "type": "spoken",
+              "english": "I'm still figuring it out.",
+              "chinese": "我还在摸索当中。",
+              "scene": "谈计划时表达尚未确定",
+              "example": "I haven't decided on the final plan yet. I'm still figuring it out."
+            },
+            {
+              "type": "spoken",
+              "english": "Let's play it by ear.",
+              "chinese": "我们到时候随机应变吧。",
+              "scene": "计划不确定时",
+              "example": "If the weather changes, let's play it by ear."
+            }
+          ],
+          "quiz": {
+            "questions": [
+              {
+                "id": "1775030269968_0ef142-1",
+                "prompt": "这句内容的正确中文意思是哪个？ I'm still figuring it out.",
+                "answer": "我还在摸索当中。",
+                "options": [
+                  "我想办理入住。",
+                  "我还在摸索当中。",
+                  "感谢你的耐心。",
+                  "可持续的"
+                ]
+              },
+              {
+                "id": "1775030269968_0ef142-2",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's play it by ear.",
+                "answer": "我们到时候随机应变吧。",
+                "options": [
+                  "我还在摸索当中。",
+                  "感谢你的耐心。",
+                  "我们到时候随机应变吧。",
+                  "这个座位有人吗？"
+                ]
+              }
+            ]
+          },
+          "quizSentAt": "2026-04-01T07:57:52.825Z",
+          "quizMode": "manual",
+          "quizResult": {
+            "submittedAt": "2026-04-01T07:57:52.884Z",
+            "score": 1,
+            "total": 2,
+            "accuracy": 50,
+            "answers": [
+              {
+                "questionId": "1775030269968_0ef142-1",
+                "prompt": "这句内容的正确中文意思是哪个？ I'm still figuring it out.",
+                "answer": "我还在摸索当中。",
+                "correctAnswer": "我还在摸索当中。",
+                "isCorrect": true
+              },
+              {
+                "questionId": "1775030269968_0ef142-2",
+                "prompt": "这句内容的正确中文意思是哪个？ Let's play it by ear.",
+                "answer": "",
+                "correctAnswer": "我们到时候随机应变吧。",
+                "isCorrect": false
+              }
+            ]
+          },
+          "delivery": {
+            "morning": {
+              "id": "1775030271297_02fc8d",
+              "createdAt": "2026-04-01T07:57:51.297Z",
+              "subject": "每日学习小助手｜2026-04-01 早间学习",
+              "mode": "smtp"
+            },
+            "evening": {
+              "id": "1775030272825_9c654f",
+              "createdAt": "2026-04-01T07:57:52.825Z",
+              "subject": "每日学习小助手｜2026-04-01 晚间测验",
+              "mode": "smtp"
+            }
+          }
+        }
+      ],
+      "currentLevel": 1
+    },
+    "mailquiz2@example.com": {
+      "email": "mailquiz2@example.com",
+      "preferences": {
+        "dailyCount": 2,
+        "learningTypes": [
+          "spoken"
+        ],
+        "customTopic": "",
+        "sendTime": "09:00",
+        "reviewEnabled": true,
+        "reviewTime": "18:00",
+        "backupChannel": "wechat",
+        "backupContact": ""
+      },
+      "sessions": [
+        {
+          "id": "1775030270017_0d029a",
+          "email": "mailquiz2@example.com",
+          "date": "2026-04-01",
+          "createdAt": "2026-04-01T07:57:50.017Z",
+          "mode": "manual",
+          "contentType": "spoken",
+          "items": [
+            {
+              "type": "spoken",
+              "english": "That makes sense.",
+              "chinese": "这就说得通了。",
+              "scene": "对别人解释表示认同",
+              "example": "Oh, you took a taxi because it was raining. That makes sense."
+            },
+            {
+              "type": "spoken",
+              "english": "I'm still figuring it out.",
+              "chinese": "我还在摸索当中。",
+              "scene": "谈计划时表达尚未确定",
+              "example": "I haven't decided on the final plan yet. I'm still figuring it out."
+            }
+          ],
+          "quiz": {
+            "questions": [
+              {
+                "id": "1775030270017_0d029a-1",
+                "prompt": "这句内容的正确中文意思是哪个？ That makes sense.",
+                "answer": "这就说得通了。",
+                "options": [
+                  "我还在摸索当中。",
+                  "这就说得通了。",
+                  "这个座位有人吗？",
+                  "请查收下面的附件。"
+                ]
+              },
+              {
+                "id": "1775030270017_0d029a-2",
+                "prompt": "这句内容的正确中文意思是哪个？ I'm still figuring it out.",
+                "answer": "我还在摸索当中。",
+                "options": [
+                  "准确的",
+                  "我还在摸索当中。",
+                  "我们先对齐一下优先级。",
+                  "我们到时候随机应变吧。"
+                ]
+              }
+            ]
+          },
+          "quizSentAt": "2026-04-01T07:57:52.827Z",
+          "quizMode": "manual",
+          "quizResult": {
+            "submittedAt": "2026-04-01T07:57:52.897Z",
+            "score": 1,
+            "total": 2,
+            "accuracy": 50,
+            "answers": [
+              {
+                "questionId": "1775030270017_0d029a-1",
+                "prompt": "这句内容的正确中文意思是哪个？ That makes sense.",
+                "answer": "这就说得通了。",
+                "correctAnswer": "这就说得通了。",
+                "isCorrect": true
+              },
+              {
+                "questionId": "1775030270017_0d029a-2",
+                "prompt": "这句内容的正确中文意思是哪个？ I'm still figuring it out.",
+                "answer": "",
+                "correctAnswer": "我还在摸索当中。",
+                "isCorrect": false
+              }
+            ]
+          },
+          "delivery": {
+            "morning": {
+              "id": "1775030271250_77329b",
+              "createdAt": "2026-04-01T07:57:51.250Z",
+              "subject": "每日学习小助手｜2026-04-01 早间学习",
+              "mode": "smtp"
+            },
+            "evening": {
+              "id": "1775030272827_c96dd5",
+              "createdAt": "2026-04-01T07:57:52.827Z",
+              "subject": "每日学习小助手｜2026-04-01 晚间测验",
+              "mode": "smtp"
+            }
+          }
+        }
+      ],
+      "currentLevel": 1
+    },
+    "codex-demo@example.com": {
+      "email": "codex-demo@example.com",
+      "preferences": {
+        "dailyCount": 4,
+        "learningTypes": [
+          "spoken",
+          "vocabulary",
+          "finance",
+          "custom"
+        ],
+        "customTopic": "AI ????",
+        "sendTime": "08:00",
+        "reviewEnabled": true,
+        "reviewTime": "21:00",
+        "backupChannel": "wechat",
+        "backupContact": "demo-wechat"
+      },
+      "sessions": [
+        {
+          "id": "1775190651244_09836c",
+          "email": "codex-demo@example.com",
+          "date": "2026-04-03",
+          "createdAt": "2026-04-03T04:30:51.243Z",
+          "mode": "manual",
+          "learningTypes": [
+            "spoken",
+            "vocabulary",
+            "finance",
+            "custom"
+          ],
+          "customTopic": "AI ????",
+          "difficultyLevel": 1,
+          "generationMode": "curated-fallback",
+          "items": [
+            {
+              "id": "spoken-1",
+              "type": "spoken",
+              "level": 1,
+              "headline": "That makes sense.",
+              "chinese": "这就说得通了。",
+              "phonetic": "",
+              "scene": "理解对方解释后的回应",
+              "example": "You left early because of the traffic. That makes sense.",
+              "summary": "",
+              "takeaway": "",
+              "keywords": [],
+              "source": "database"
+            },
+            {
+              "id": "voc-1",
+              "type": "vocabulary",
+              "level": 1,
+              "headline": "sustainable",
+              "chinese": "可持续的",
+              "phonetic": "/səˈsteɪnəbəl/",
+              "scene": "",
+              "example": "We need a more sustainable study routine.",
+              "summary": "",
+              "takeaway": "常用于环保、商业和长期策略语境。",
+              "keywords": [],
+              "source": "database"
+            },
+            {
+              "id": "finance-1",
+              "type": "finance",
+              "level": 1,
+              "headline": "Tech shares lead another broad market rebound",
+              "chinese": "科技股带动市场继续反弹",
+              "phonetic": "",
+              "scene": "",
+              "example": "",
+              "summary": "投资者重新押注高增长板块，风险偏好在短期内回升。",
+              "takeaway": "观察市场情绪时，可以先看科技龙头和成交量的同步变化。",
+              "keywords": [
+                "市场情绪",
+                "科技股"
+              ],
+              "source": "database"
+            },
+            {
+              "id": "1775190651243_b4fa10",
+              "type": "custom",
+              "level": 1,
+              "headline": "AI ???? 今日焦点",
+              "chinese": "AI ????",
+              "phonetic": "",
+              "scene": "",
+              "example": "",
+              "summary": "用 90 秒理解 AI ???? 中最值得今天吸收的一个关键概念。",
+              "takeaway": "请把 AI ???? 拆成“定义、影响、行动建议”三步理解。",
+              "keywords": [
+                "AI ????",
+                "Level 1"
+              ],
+              "source": "template-generator"
+            }
+          ],
+          "reviewEligible": true,
+          "completedAt": "2026-04-03T04:30:51.247Z",
+          "completionSource": "dashboard",
+          "quiz": {
+            "questions": [
+              {
+                "id": "1775190651244_09836c-1",
+                "type": "choice",
+                "prompt": "这句口语更贴近哪一种中文含义？That makes sense.",
+                "answer": "这就说得通了。",
+                "options": [
+                  "我们一起过一遍吧。",
+                  "这就说得通了。",
+                  "我们明天再回头看这个可以吗？",
+                  "我会稍微换个角度来表述。"
+                ],
+                "hint": "理解对方解释后的回应"
+              },
+              {
+                "id": "1775190651244_09836c-2",
+                "type": "text",
+                "prompt": "根据中文写出单词：可持续的",
+                "answer": "sustainable",
+                "hint": "/səˈsteɪnəbəl/"
+              }
+            ]
+          },
+          "quizSentAt": null,
+          "quizMode": null,
+          "quizResult": {
+            "submittedAt": "2026-04-03T04:30:51.252Z",
+            "score": 2,
+            "total": 2,
+            "accuracy": 100,
+            "answers": [
+              {
+                "questionId": "1775190651244_09836c-1",
+                "prompt": "这句口语更贴近哪一种中文含义？That makes sense.",
+                "answer": "这就说得通了。",
+                "correctAnswer": "这就说得通了。",
+                "isCorrect": true
+              },
+              {
+                "questionId": "1775190651244_09836c-2",
+                "prompt": "根据中文写出单词：可持续的",
+                "answer": "sustainable",
+                "correctAnswer": "sustainable",
+                "isCorrect": true
+              }
+            ]
+          },
+          "delivery": {
+            "morning": null,
+            "evening": null
+          }
+        }
+      ],
+      "currentLevel": 3
+    },
+    "codex-preview@example.com": {
+      "email": "codex-preview@example.com",
+      "preferences": {
+        "dailyCount": 4,
+        "learningTypes": [
+          "spoken",
+          "vocabulary",
+          "finance",
+          "custom"
+        ],
+        "customTopic": "AI ????",
+        "sendTime": "08:00",
+        "reviewEnabled": true,
+        "reviewTime": "21:00",
+        "backupChannel": "wechat",
+        "backupContact": ""
+      },
+      "sessions": [
+        {
+          "id": "1775190691314_91366c",
+          "email": "codex-preview@example.com",
+          "date": "2026-04-03",
+          "createdAt": "2026-04-03T04:31:31.314Z",
+          "mode": "manual",
+          "learningTypes": [
+            "spoken",
+            "vocabulary",
+            "finance",
+            "custom"
+          ],
+          "customTopic": "AI ????",
+          "difficultyLevel": 1,
+          "generationMode": "curated-fallback",
+          "items": [
+            {
+              "id": "spoken-2",
+              "type": "spoken",
+              "level": 1,
+              "headline": "I'm still figuring it out.",
+              "chinese": "我还在摸索中。",
+              "phonetic": "",
+              "scene": "计划尚未完全明确时",
+              "example": "I haven't chosen a final topic yet. I'm still figuring it out.",
+              "summary": "",
+              "takeaway": "",
+              "keywords": [],
+              "source": "database"
+            },
+            {
+              "id": "voc-2",
+              "type": "vocabulary",
+              "level": 1,
+              "headline": "accurate",
+              "chinese": "准确的",
+              "phonetic": "/ˈækjərət/",
+              "scene": "",
+              "example": "The summary is short but accurate.",
+              "summary": "",
+              "takeaway": "描述信息、数据和判断是否精确。",
+              "keywords": [],
+              "source": "database"
+            },
+            {
+              "id": "finance-2",
+              "type": "finance",
+              "level": 1,
+              "headline": "Oil prices cool as traders reassess demand outlook",
+              "chinese": "交易员重新评估需求前景，油价回落",
+              "phonetic": "",
+              "scene": "",
+              "example": "",
+              "summary": "能源价格波动往往会传导到运输、制造与通胀预期。",
+              "takeaway": "阅读财经新闻时，先抓住“价格变化 + 原因 + 影响对象”三件事。",
+              "keywords": [
+                "大宗商品",
+                "通胀"
+              ],
+              "source": "database"
+            },
+            {
+              "id": "1775190691314_221dda",
+              "type": "custom",
+              "level": 1,
+              "headline": "AI ???? 今日焦点",
+              "chinese": "AI ????",
+              "phonetic": "",
+              "scene": "",
+              "example": "",
+              "summary": "用 90 秒理解 AI ???? 中最值得今天吸收的一个关键概念。",
+              "takeaway": "请把 AI ???? 拆成“定义、影响、行动建议”三步理解。",
+              "keywords": [
+                "AI ????",
+                "Level 1"
+              ],
+              "source": "template-generator"
+            }
+          ],
+          "reviewEligible": true,
+          "completedAt": "2026-04-03T04:31:31.316Z",
+          "completionSource": "dashboard",
+          "quiz": {
+            "questions": [
+              {
+                "id": "1775190691314_91366c-1",
+                "type": "choice",
+                "prompt": "这句口语更贴近哪一种中文含义？I'm still figuring it out.",
+                "answer": "我还在摸索中。",
+                "options": [
+                  "我们明天再回头看这个可以吗？",
+                  "我还在摸索中。",
+                  "我会稍微换个角度来表述。",
+                  "我们一起过一遍吧。"
+                ],
+                "hint": "计划尚未完全明确时"
+              },
+              {
+                "id": "1775190691314_91366c-2",
+                "type": "text",
+                "prompt": "根据中文写出单词：准确的",
+                "answer": "accurate",
+                "hint": "/ˈækjərət/"
+              }
+            ]
+          },
+          "quizSentAt": null,
+          "quizMode": null,
+          "quizResult": {
+            "submittedAt": "2026-04-03T04:31:31.320Z",
+            "score": 2,
+            "total": 2,
+            "accuracy": 100,
+            "answers": [
+              {
+                "questionId": "1775190691314_91366c-1",
+                "prompt": "这句口语更贴近哪一种中文含义？I'm still figuring it out.",
+                "answer": "我还在摸索中。",
+                "correctAnswer": "我还在摸索中。",
+                "isCorrect": true
+              },
+              {
+                "questionId": "1775190691314_91366c-2",
+                "prompt": "根据中文写出单词：准确的",
+                "answer": "accurate",
+                "correctAnswer": "accurate",
+                "isCorrect": true
+              }
+            ]
+          },
+          "delivery": {
+            "morning": null,
+            "evening": null
+          }
+        }
+      ],
+      "currentLevel": 1
+    },
+    "codex-preview-2@example.com": {
+      "email": "codex-preview-2@example.com",
+      "preferences": {
+        "dailyCount": 4,
+        "learningTypes": [
+          "spoken",
+          "vocabulary",
+          "finance",
+          "custom"
+        ],
+        "customTopic": "AI ????",
+        "sendTime": "08:00",
+        "reviewEnabled": true,
+        "reviewTime": "21:00",
+        "backupChannel": "wechat",
+        "backupContact": ""
+      },
+      "sessions": [
+        {
+          "id": "1775190720196_c04550",
+          "email": "codex-preview-2@example.com",
+          "date": "2026-04-03",
+          "createdAt": "2026-04-03T04:32:00.196Z",
+          "mode": "manual",
+          "learningTypes": [
+            "spoken",
+            "vocabulary",
+            "finance",
+            "custom"
+          ],
+          "customTopic": "AI ????",
+          "difficultyLevel": 1,
+          "generationMode": "curated-fallback",
+          "items": [
+            {
+              "id": "spoken-1",
+              "type": "spoken",
+              "level": 1,
+              "headline": "That makes sense.",
+              "chinese": "这就说得通了。",
+              "phonetic": "",
+              "scene": "理解对方解释后的回应",
+              "example": "You left early because of the traffic. That makes sense.",
+              "summary": "",
+              "takeaway": "",
+              "keywords": [],
+              "source": "database"
+            },
+            {
+              "id": "voc-1",
+              "type": "vocabulary",
+              "level": 1,
+              "headline": "sustainable",
+              "chinese": "可持续的",
+              "phonetic": "/səˈsteɪnəbəl/",
+              "scene": "",
+              "example": "We need a more sustainable study routine.",
+              "summary": "",
+              "takeaway": "常用于环保、商业和长期策略语境。",
+              "keywords": [],
+              "source": "database"
+            },
+            {
+              "id": "finance-1",
+              "type": "finance",
+              "level": 1,
+              "headline": "Tech shares lead another broad market rebound",
+              "chinese": "科技股带动市场继续反弹",
+              "phonetic": "",
+              "scene": "",
+              "example": "",
+              "summary": "投资者重新押注高增长板块，风险偏好在短期内回升。",
+              "takeaway": "观察市场情绪时，可以先看科技龙头和成交量的同步变化。",
+              "keywords": [
+                "市场情绪",
+                "科技股"
+              ],
+              "source": "database"
+            },
+            {
+              "id": "1775190720196_369b5f",
+              "type": "custom",
+              "level": 1,
+              "headline": "AI ???? 今日焦点",
+              "chinese": "AI ????",
+              "phonetic": "",
+              "scene": "",
+              "example": "",
+              "summary": "用 90 秒理解 AI ???? 中最值得今天吸收的一个关键概念。",
+              "takeaway": "请把 AI ???? 拆成“定义、影响、行动建议”三步理解。",
+              "keywords": [
+                "AI ????",
+                "Level 1"
+              ],
+              "source": "template-generator"
+            }
+          ],
+          "reviewEligible": true,
+          "completedAt": "2026-04-03T04:32:00.208Z",
+          "completionSource": "dashboard",
+          "quiz": {
+            "questions": [
+              {
+                "id": "1775190720196_c04550-1",
+                "type": "choice",
+                "prompt": "这句口语更贴近哪一种中文含义？That makes sense.",
+                "answer": "这就说得通了。",
+                "options": [
+                  "我们明天再回头看这个可以吗？",
+                  "我会稍微换个角度来表述。",
+                  "这就说得通了。",
+                  "我还在摸索中。"
+                ],
+                "hint": "理解对方解释后的回应"
+              },
+              {
+                "id": "1775190720196_c04550-2",
+                "type": "text",
+                "prompt": "根据中文写出单词：可持续的",
+                "answer": "sustainable",
+                "hint": "/səˈsteɪnəbəl/"
+              }
+            ]
+          },
+          "quizSentAt": "2026-04-03T04:32:00.204Z",
+          "quizMode": "manual",
+          "quizResult": {
+            "submittedAt": "2026-04-03T04:32:00.213Z",
+            "score": 2,
+            "total": 2,
+            "accuracy": 100,
+            "answers": [
+              {
+                "questionId": "1775190720196_c04550-1",
+                "prompt": "这句口语更贴近哪一种中文含义？That makes sense.",
+                "answer": "这就说得通了。",
+                "correctAnswer": "这就说得通了。",
+                "isCorrect": true
+              },
+              {
+                "questionId": "1775190720196_c04550-2",
+                "prompt": "根据中文写出单词：可持续的",
+                "answer": "sustainable",
+                "correctAnswer": "sustainable",
+                "isCorrect": true
+              }
+            ]
+          },
+          "delivery": {
+            "morning": {
+              "id": "1775190720198_509aa1",
+              "sentAt": "2026-04-03T04:32:00.198Z",
+              "subject": "每日学习助手｜2026-04-03 今日学习内容",
+              "opens": 0,
+              "clicks": 0,
+              "openedAt": null,
+              "clickedAt": null,
+              "mode": "preview"
+            },
+            "evening": {
+              "id": "1775190720204_c638dc",
+              "sentAt": "2026-04-03T04:32:00.204Z",
+              "subject": "每日学习助手｜2026-04-03 晚间复习测试",
+              "opens": 0,
+              "clicks": 0,
+              "openedAt": null,
+              "clickedAt": null,
+              "mode": "preview"
+            }
+          }
+        }
+      ],
+      "currentLevel": 3
+    }
+  },
+  "logs": [
+    {
+      "id": "1775028242838_afdd8f",
+      "time": "2026-04-01T07:24:02.838Z",
+      "message": "已更新 test@example.com 的学习设置。"
+    },
+    {
+      "id": "1775028270093_44f208",
+      "time": "2026-04-01T07:24:30.093Z",
+      "message": "已更新 demo@example.com 的学习设置。"
+    },
+    {
+      "id": "1775028271771_ffb11e",
+      "time": "2026-04-01T07:24:31.771Z",
+      "message": "demo@example.com 已手动发送早晨学习。"
+    },
+    {
+      "id": "1775028273432_2915a2",
+      "time": "2026-04-01T07:24:33.432Z",
+      "message": "demo@example.com 已手动发送早晨学习。"
+    },
+    {
+      "id": "1775028275402_ba2ea7",
+      "time": "2026-04-01T07:24:35.402Z",
+      "message": "demo@example.com 已手动发送晚间测验。"
+    },
+    {
+      "id": "1775028398251_dd94ce",
+      "time": "2026-04-01T07:26:38.251Z",
+      "message": "已更新 13287615996@163.com 的学习设置。"
+    },
+    {
+      "id": "1775028401042_52bf08",
+      "time": "2026-04-01T07:26:41.042Z",
+      "message": "已更新 13287615996@163.com 的学习设置。"
+    },
+    {
+      "id": "1775028402163_424739",
+      "time": "2026-04-01T07:26:42.163Z",
+      "message": "已更新 13287615996@163.com 的学习设置。"
+    },
+    {
+      "id": "1775028409192_e3f2d4",
+      "time": "2026-04-01T07:26:49.192Z",
+      "message": "13287615996@163.com 已手动发送早晨学习。"
+    },
+    {
+      "id": "1775028436632_82987d",
+      "time": "2026-04-01T07:27:16.632Z",
+      "message": "13287615996@163.com 已手动发送晚间测验。"
+    },
+    {
+      "id": "1775028449748_b9e5a3",
+      "time": "2026-04-01T07:27:29.748Z",
+      "message": "已更新 13287615996@163.com 的学习设置。"
+    },
+    {
+      "id": "1775028455016_141e04",
+      "time": "2026-04-01T07:27:35.016Z",
+      "message": "13287615996@163.com 已手动发送早晨学习。"
+    },
+    {
+      "id": "1775028475479_a06e4b",
+      "time": "2026-04-01T07:27:55.479Z",
+      "message": "已更新 13287615996@163.com 的学习设置。"
+    },
+    {
+      "id": "1775028478106_c37f76",
+      "time": "2026-04-01T07:27:58.106Z",
+      "message": "13287615996@163.com 已手动发送早晨学习。"
+    },
+    {
+      "id": "1775028816417_b218a7",
+      "time": "2026-04-01T07:33:36.417Z",
+      "message": "13287615996@163.com 提交了测验，正确率 40%。"
+    },
+    {
+      "id": "1775029034459_9e4dcc",
+      "time": "2026-04-01T07:37:14.459Z",
+      "message": "已更新 13287615996@163.com 的学习设置。"
+    },
+    {
+      "id": "1775029746406_2a49ad",
+      "time": "2026-04-01T07:49:06.406Z",
+      "message": "已更新 13287615996@163.com 的学习设置。"
+    },
+    {
+      "id": "1775029824878_ccbbad",
+      "time": "2026-04-01T07:50:24.878Z",
+      "message": "已更新 13287615996@163.com 的学习设置。"
+    },
+    {
+      "id": "1775029863990_f38c47",
+      "time": "2026-04-01T07:51:03.990Z",
+      "message": "13287615996@163.com 已自动发送晚间测验。"
+    },
+    {
+      "id": "1775029913961_1a3877",
+      "time": "2026-04-01T07:51:53.961Z",
+      "message": "13287615996@163.com 已手动发送晚间测验。"
+    },
+    {
+      "id": "1775029915305_5ebb59",
+      "time": "2026-04-01T07:51:55.305Z",
+      "message": "13287615996@163.com 已手动发送晚间测验。"
+    },
+    {
+      "id": "1775030269879_e4e7e3",
+      "time": "2026-04-01T07:57:49.879Z",
+      "message": "已更新 mailquiz@example.com 的学习设置。"
+    },
+    {
+      "id": "1775030269930_b4991f",
+      "time": "2026-04-01T07:57:49.930Z",
+      "message": "已更新 mailquiz2@example.com 的学习设置。"
+    },
+    {
+      "id": "1775030271250_bd72d1",
+      "time": "2026-04-01T07:57:51.250Z",
+      "message": "mailquiz2@example.com 已手动发送早晨学习。"
+    },
+    {
+      "id": "1775030271297_7c828d",
+      "time": "2026-04-01T07:57:51.297Z",
+      "message": "mailquiz@example.com 已手动发送早晨学习。"
+    },
+    {
+      "id": "1775030272825_a3e960",
+      "time": "2026-04-01T07:57:52.825Z",
+      "message": "mailquiz@example.com 已手动发送晚间测验。"
+    },
+    {
+      "id": "1775030272827_a9e48b",
+      "time": "2026-04-01T07:57:52.827Z",
+      "message": "mailquiz2@example.com 已手动发送晚间测验。"
+    },
+    {
+      "id": "1775030272884_0dbbd0",
+      "time": "2026-04-01T07:57:52.884Z",
+      "message": "mailquiz@example.com 通过邮件作答了一道题，当前正确率 50%。"
+    },
+    {
+      "id": "1775030272897_b96cda",
+      "time": "2026-04-01T07:57:52.897Z",
+      "message": "mailquiz2@example.com 通过邮件作答了一道题，当前正确率 50%。"
+    },
+    {
+      "id": "1775031051320_ad2d0d",
+      "time": "2026-04-01T08:10:51.320Z",
+      "message": "13287615996@163.com 已手动发送早晨学习。"
+    },
+    {
+      "id": "1775031059968_d9346d",
+      "time": "2026-04-01T08:10:59.968Z",
+      "message": "13287615996@163.com 已手动发送晚间测验。"
+    },
+    {
+      "id": "1775032754625_bcd218",
+      "time": "2026-04-01T08:39:14.625Z",
+      "message": "13287615996@163.com 已手动发送早晨学习。"
+    },
+    {
+      "id": "1775032775237_8dc597",
+      "time": "2026-04-01T08:39:35.237Z",
+      "message": "13287615996@163.com 提交了测验，正确率 40%。"
+    },
+    {
+      "id": "1775035606396_e97fdb",
+      "time": "2026-04-01T09:26:46.396Z",
+      "message": "13287615996@163.com 已手动发送早晨学习。"
+    },
+    {
+      "id": "1775037617942_263b49",
+      "time": "2026-04-01T10:00:17.942Z",
+      "message": "demo@example.com 已自动发送晚间测验。"
+    },
+    {
+      "id": "1775190651235_40063f",
+      "time": "2026-04-03T04:30:51.235Z",
+      "message": "codex-demo@example.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775190651243_92e2af",
+      "time": "2026-04-03T04:30:51.243Z",
+      "message": "codex-demo@example.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775190651244_06ff1d",
+      "time": "2026-04-03T04:30:51.244Z",
+      "message": "codex-demo@example.com 的晨间邮件发送失败：SMTP 未配置完成，请先补充发信配置。"
+    },
+    {
+      "id": "1775190651247_21b085",
+      "time": "2026-04-03T04:30:51.247Z",
+      "message": "codex-demo@example.com 完成了 2026-04-03 的学习内容"
+    },
+    {
+      "id": "1775190651252_940b9b",
+      "time": "2026-04-03T04:30:51.252Z",
+      "message": "codex-demo@example.com 完成了晚间测试，正确率 100%"
+    },
+    {
+      "id": "1775190691306_d2e00c",
+      "time": "2026-04-03T04:31:31.306Z",
+      "message": "codex-preview@example.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775190691314_f6d2d7",
+      "time": "2026-04-03T04:31:31.314Z",
+      "message": "codex-preview@example.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775190691314_d284fa",
+      "time": "2026-04-03T04:31:31.314Z",
+      "message": "codex-preview@example.com 的晨间邮件发送失败：SMTP 未配置完成，请先补充发信配置。"
+    },
+    {
+      "id": "1775190691316_2729b6",
+      "time": "2026-04-03T04:31:31.316Z",
+      "message": "codex-preview@example.com 完成了 2026-04-03 的学习内容"
+    },
+    {
+      "id": "1775190691320_b20c4a",
+      "time": "2026-04-03T04:31:31.320Z",
+      "message": "codex-preview@example.com 完成了晚间测试，正确率 100%"
+    },
+    {
+      "id": "1775190720183_437e0b",
+      "time": "2026-04-03T04:32:00.183Z",
+      "message": "codex-preview-2@example.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775190720196_b59c63",
+      "time": "2026-04-03T04:32:00.196Z",
+      "message": "codex-preview-2@example.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775190720198_dc3524",
+      "time": "2026-04-03T04:32:00.198Z",
+      "message": "codex-preview-2@example.com 手动发送了今日学习内容"
+    },
+    {
+      "id": "1775190720204_185e45",
+      "time": "2026-04-03T04:32:00.204Z",
+      "message": "codex-preview-2@example.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775190720204_5c92ff",
+      "time": "2026-04-03T04:32:00.204Z",
+      "message": "codex-preview-2@example.com 手动发送了晚间复盘"
+    },
+    {
+      "id": "1775190720209_5652f7",
+      "time": "2026-04-03T04:32:00.209Z",
+      "message": "codex-preview-2@example.com 完成了 2026-04-03 的学习内容"
+    },
+    {
+      "id": "1775190720213_ce8df9",
+      "time": "2026-04-03T04:32:00.213Z",
+      "message": "codex-preview-2@example.com 完成了晚间测试，正确率 100%"
+    },
+    {
+      "id": "1775196267541_5b15d9",
+      "time": "2026-04-03T06:04:27.541Z",
+      "message": "13287615996@163.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775196281913_62e181",
+      "time": "2026-04-03T06:04:41.913Z",
+      "message": "13287615996@163.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775196281914_b28b45",
+      "time": "2026-04-03T06:04:41.914Z",
+      "message": "13287615996@163.com 手动发送了今日学习内容"
+    },
+    {
+      "id": "1775197374592_bd9977",
+      "time": "2026-04-03T06:22:54.592Z",
+      "message": "13287615996@163.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775197374609_ecf4dd",
+      "time": "2026-04-03T06:22:54.609Z",
+      "message": "13287615996@163.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775197375930_324e6e",
+      "time": "2026-04-03T06:22:55.930Z",
+      "message": "13287615996@163.com 手动发送了今日学习内容"
+    },
+    {
+      "id": "1775201111123_2de20d",
+      "time": "2026-04-03T07:25:11.123Z",
+      "message": "13287615996@163.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775201116172_4b8f16",
+      "time": "2026-04-03T07:25:16.172Z",
+      "message": "13287615996@163.com 的晨间邮件发送失败：Client network socket disconnected before secure TLS connection was established"
+    },
+    {
+      "id": "1775201961338_a52d4b",
+      "time": "2026-04-03T07:39:21.338Z",
+      "message": "13287615996@163.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775201968062_5bf2c4",
+      "time": "2026-04-03T07:39:28.062Z",
+      "message": "13287615996@163.com 手动发送了今日学习内容"
+    },
+    {
+      "id": "1775202195928_8f128e",
+      "time": "2026-04-03T07:43:15.928Z",
+      "message": "13287615996@163.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775202201134_a40a33",
+      "time": "2026-04-03T07:43:21.134Z",
+      "message": "13287615996@163.com 手动发送了晚间复盘"
+    }
+  ]
+}
