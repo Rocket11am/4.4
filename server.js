@@ -193,6 +193,7 @@ function buildClientState(email) {
   const sessions = user ? sortSessions(user.sessions).map(normalizeSession) : [];
   const activeSession = sessions[0] || null;
   const stats = user ? buildStats(user, sessions) : emptyStats();
+  const pet = buildPetState(user, sessions, stats);
 
   return {
     ok: true,
@@ -202,6 +203,7 @@ function buildClientState(email) {
           dailyCount: user.preferences.dailyCount,
           learningTypes: user.preferences.learningTypes,
           customTopic: user.preferences.customTopic,
+          petName: user.preferences.petName,
           sendTime: user.preferences.sendTime,
           reviewEnabled: user.preferences.reviewEnabled,
           reviewTime: user.preferences.reviewTime,
@@ -210,6 +212,7 @@ function buildClientState(email) {
         }
       : null,
     stats,
+    pet,
     activeSession,
     history: sessions,
     timeline: buildTimeline(sessions),
@@ -239,6 +242,40 @@ function emptyStats() {
     openRate: 0,
     clickRate: 0
   };
+}
+
+function buildPetState(user, sessions, stats) {
+  const completedSessions = sessions.filter((session) => session.completedAt);
+  const currentStreak = Number(stats?.streak || 0);
+  const lifetimeFeeds = completedSessions.length;
+  const milestoneAge = 1 + Math.floor(currentStreak / 10);
+  const storedAge = Number(user?.pet?.age || 1);
+  const age = Math.max(1, storedAge, milestoneAge);
+  const level = age;
+  const progressDays = currentStreak % 10;
+  const daysToNextLevel = progressDays === 0 ? 10 : 10 - progressDays;
+  const stage = getPetStage(age);
+
+  return {
+    name: String(user?.preferences?.petName || user?.pet?.name || "小闪电").trim() || "小闪电",
+    age,
+    level,
+    stage: stage.id,
+    stageLabel: stage.label,
+    mood: currentStreak >= 3 ? "活力满满" : "等待投喂",
+    currentStreak,
+    lifetimeFeeds,
+    progressDays,
+    daysToNextLevel,
+    fedToday: completedSessions.some((session) => session.date === formatDateKey(new Date()))
+  };
+}
+
+function getPetStage(age) {
+  if (age >= 7) return { id: "legend", label: "霓虹守护兽" };
+  if (age >= 5) return { id: "nova", label: "星轨巡航兽" };
+  if (age >= 3) return { id: "spark", label: "电光探索兽" };
+  return { id: "seed", label: "像素幼宠" };
 }
 
 function buildStats(user, sessions) {
@@ -352,11 +389,12 @@ function upsertUser(input) {
     email
   });
 
-  const user = existing || { email, preferences, sessions: [], currentLevel: 1 };
+  const user = existing || { email, preferences, sessions: [], currentLevel: 1, pet: normalizePet({ name: preferences.petName, age: 1 }) };
   user.email = email;
   user.preferences = preferences;
   user.sessions = Array.isArray(user.sessions) ? user.sessions : [];
   user.currentLevel = deriveDifficultyLevel(user);
+  user.pet = normalizePet({ ...user.pet, name: preferences.petName });
   store.users[key] = user;
 
   appendLog(`${email} 更新了学习订阅配置`);
@@ -470,6 +508,14 @@ function completeSessionInternal(email, sessionId, source) {
 
   session.completedAt = new Date().toISOString();
   session.completionSource = source;
+  const completedSessions = user.sessions.filter((item) => item.completedAt).map(normalizeSession);
+  const streak = computeStreak(completedSessions);
+  const targetPetAge = Math.max(1, 1 + Math.floor(streak / 10));
+  user.pet = normalizePet({
+    ...user.pet,
+    name: user.preferences.petName,
+    age: Math.max(Number(user?.pet?.age || 1), targetPetAge)
+  });
   appendLog(`${user.email} 完成了 ${session.date} 的学习内容`);
   saveStore();
   return { ok: true, message: "已记录今日完成，连续学习数据已更新。" };
@@ -1538,7 +1584,8 @@ function normalizeStore(rawStore) {
       email,
       preferences: normalizePreferences({ ...user?.preferences, email }),
       sessions: Array.isArray(user?.sessions) ? user.sessions : [],
-      currentLevel: Number(user?.currentLevel || 1)
+      currentLevel: Number(user?.currentLevel || 1),
+      pet: normalizePet({ ...user?.pet, name: user?.pet?.name || user?.preferences?.petName })
     };
   });
 
@@ -1555,11 +1602,19 @@ function normalizePreferences(input) {
     dailyCount: normalizeDailyCount(input?.dailyCount ?? input?.lessonCount),
     learningTypes,
     customTopic: String(input?.customTopic || "").trim(),
+    petName: normalizePetName(input?.petName),
     sendTime: validTime(String(input?.sendTime || input?.morningTime || "")) || "07:30",
     reviewEnabled,
     reviewTime: validTime(String(input?.reviewTime || input?.eveningTime || "")) || "20:30",
     backupChannel: normalizeBackupChannel(input?.backupChannel),
     backupContact: String(input?.backupContact || "").trim()
+  };
+}
+
+function normalizePet(input) {
+  return {
+    name: normalizePetName(input?.name),
+    age: Math.max(1, Number(input?.age || 1))
   };
 }
 
@@ -1731,6 +1786,12 @@ function labelsForTypes(types) {
 
 function normalizeEmail(value) {
   return String(value || "").trim();
+}
+
+function normalizePetName(value) {
+  const clean = String(value || "").trim();
+  if (!clean) return "小闪电";
+  return clean.slice(0, 20);
 }
 
 function normalizeDailyCount(value) {

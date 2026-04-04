@@ -48,6 +48,41 @@
         </div>
       </article>
 
+      <article class="card pet-panel">
+        <p class="tiny">&gt; virtual pet</p>
+        <h2 class="section-title">电子宠物</h2>
+        <div class="pet-shell">
+          <div id="pet-avatar" class="pet-avatar pet-stage-seed" aria-hidden="true">
+            <div class="pet-core"></div>
+            <div class="pet-ring"></div>
+            <div class="pet-face">^_^</div>
+          </div>
+          <div class="pet-meta">
+            <div class="pet-name-row">
+              <strong id="pet-name" class="pet-name">小闪电</strong>
+              <span id="pet-stage-label" class="pet-badge">像素幼宠</span>
+            </div>
+            <div class="pet-stats">
+              <div class="pet-stat"><span>年龄</span><b id="pet-age">1 岁</b></div>
+              <div class="pet-stat"><span>等级</span><b id="pet-level">Lv.1</b></div>
+              <div class="pet-stat"><span>累计喂养</span><b id="pet-feeds">0 次</b></div>
+              <div class="pet-stat"><span>今日喂养</span><b id="pet-fed-today">未喂养</b></div>
+            </div>
+            <p id="pet-mood" class="muted">等待你完成今天的学习任务。</p>
+            <div class="pet-progress">
+              <div class="pet-progress-top">
+                <span>本轮成长进度</span>
+                <span id="pet-progress-text">0 / 10</span>
+              </div>
+              <div class="pet-progress-bar">
+                <div id="pet-progress-bar" class="pet-progress-fill" style="width:0%"></div>
+              </div>
+              <p id="pet-next-tip" class="tiny">再连续完成 10 天，宠物会成长一级。</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
       <article class="card review-panel" id="review-panel">
         <h2 class="section-title">晚间复习</h2>
         <form id="quiz-form" class="list"></form>
@@ -55,7 +90,7 @@
     </section>
 
     <section id="today-items-card" class="card" hidden>
-      <h2 class="section-title">今日学习内容</h2>
+      <h2 class="section-title">学习内容</h2>
       <div id="today-items" class="list"></div>
     </section>
   </main>

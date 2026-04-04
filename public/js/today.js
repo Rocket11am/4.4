@@ -12,7 +12,18 @@
     sendEveningBtn: document.getElementById("send-evening-btn"),
     todayItems: document.getElementById("today-items"),
     quizForm: document.getElementById("quiz-form"),
-    reviewPanel: document.getElementById("review-panel")
+    reviewPanel: document.getElementById("review-panel"),
+    petAvatar: document.getElementById("pet-avatar"),
+    petName: document.getElementById("pet-name"),
+    petStageLabel: document.getElementById("pet-stage-label"),
+    petAge: document.getElementById("pet-age"),
+    petLevel: document.getElementById("pet-level"),
+    petFeeds: document.getElementById("pet-feeds"),
+    petFedToday: document.getElementById("pet-fed-today"),
+    petMood: document.getElementById("pet-mood"),
+    petProgressText: document.getElementById("pet-progress-text"),
+    petProgressBar: document.getElementById("pet-progress-bar"),
+    petNextTip: document.getElementById("pet-next-tip")
   };
 
   var email = "";
@@ -98,6 +109,25 @@
     }
   }
 
+  function renderPet() {
+    var pet = state && state.pet ? state.pet : null;
+    if (!pet) return;
+
+    refs.petName.textContent = pet.name || "小闪电";
+    refs.petStageLabel.textContent = pet.stageLabel || "像素幼宠";
+    refs.petAge.textContent = String(pet.age || 1) + " 岁";
+    refs.petLevel.textContent = "Lv." + String(pet.level || 1);
+    refs.petFeeds.textContent = String(pet.lifetimeFeeds || 0) + " 次";
+    refs.petFedToday.textContent = pet.fedToday ? "已喂养" : "未喂养";
+    refs.petMood.textContent = pet.mood || "等待投喂";
+    refs.petProgressText.textContent = String(pet.progressDays || 0) + " / 10";
+    refs.petProgressBar.style.width = Math.max(0, Math.min(100, (Number(pet.progressDays || 0) / 10) * 100)) + "%";
+    refs.petNextTip.textContent = pet.daysToNextLevel === 10
+      ? "再连续完成 10 天，宠物会成长一级。"
+      : ("再连续完成 " + String(pet.daysToNextLevel || 0) + " 天，宠物会成长一级。");
+    refs.petAvatar.className = "pet-avatar pet-stage-" + (pet.stage || "seed");
+  }
+
   function render() {
     var session = getSessionFromState();
     var isCurrent = isCurrentSession(session);
@@ -114,6 +144,7 @@
 
     renderItems(session);
     renderQuiz(session);
+    renderPet();
 
     refs.completeBtn.disabled = !isCurrent;
     refs.sendMorningBtn.disabled = !state || !state.profile;

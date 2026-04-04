@@ -4,6 +4,7 @@
     settingsContent: document.getElementById("settings-content"),
     form: document.getElementById("settings-form"),
     email: document.getElementById("email"),
+    petName: document.getElementById("pet-name"),
     dailyCount: document.getElementById("daily-count"),
     sendTime: document.getElementById("send-time"),
     reviewTime: document.getElementById("review-time"),
@@ -44,6 +45,7 @@
 
   function fillForm(profile) {
     refs.email.value = profile.email || "";
+    refs.petName.value = profile.petName || "";
     refs.dailyCount.value = String(profile.dailyCount || 5);
     refs.sendTime.value = profile.sendTime || "07:30";
     refs.reviewEnabled.value = String(Boolean(profile.reviewEnabled));
@@ -67,6 +69,7 @@
 
     var payload = {
       email: email,
+      petName: refs.petName.value.trim(),
       customTopic: "",
       learningTypes: selectedTypes.slice(),
       dailyCount: Number(refs.dailyCount.value || 5),
