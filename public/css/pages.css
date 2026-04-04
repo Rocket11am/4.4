@@ -77,8 +77,52 @@
 
 .timeline {
   display: grid;
+  gap: 8px;
+}
+
+.calendar-grid {
+  display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 8px;
+}
+
+.calendar-head {
+  padding: 6px 4px;
+  text-align: center;
+  color: var(--cyan);
+  font-size: 12px;
+}
+
+.calendar-cell {
+  position: relative;
+  min-height: 72px;
+  border: 1px solid var(--border);
+  background: var(--card-strong);
+  padding: 8px;
+}
+
+.calendar-cell.is-muted {
+  opacity: 0.35;
+}
+
+.calendar-cell.is-done {
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.2);
+}
+
+.calendar-day {
+  font-family: "Orbitron", "Microsoft YaHei", sans-serif;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.calendar-mark {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  color: var(--success);
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .timeline-col {
@@ -113,6 +157,27 @@
 .session-item.active {
   border-color: var(--cyan);
   box-shadow: 0 0 14px rgba(0, 255, 255, 0.25);
+}
+
+.session-link {
+  display: block;
+  border: 1px solid var(--border);
+  background: var(--card-strong);
+  padding: 12px;
+  transition: border-color 120ms linear, box-shadow 120ms linear, transform 120ms linear;
+}
+
+.session-link:hover {
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px rgba(0, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .review-panel {

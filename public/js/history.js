@@ -13,25 +13,72 @@
 
   var email = "";
   var state = null;
-  var selectedId = "";
 
-  function renderTimeline() {
-    var timeline = state && Array.isArray(state.timeline) ? state.timeline : [];
-    if (!timeline.length) {
-      refs.timeline.innerHTML = '<div class="empty">暂无趋势数据。</div>';
-      return;
+  function buildCalendarDays() {
+    var today = new Date();
+    var year = today.getFullYear();
+    var month = today.getMonth();
+    var firstDay = new Date(year, month, 1);
+    var startWeekday = firstDay.getDay();
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+    var sessions = state && Array.isArray(state.history) ? state.history : [];
+    var quizDoneMap = {};
+    sessions.forEach(function (session) {
+      if (!session || !session.date) return;
+      if (session.quizResult && session.quizResult.submittedAt) {
+        quizDoneMap[session.date] = true;
+      }
+    });
+
+    var cells = [];
+    var offset;
+    for (offset = 0; offset < startWeekday; offset += 1) {
+      cells.push({ day: "", muted: true, checked: false });
     }
 
-    refs.timeline.innerHTML = timeline.map(function (item) {
-      var height = Math.max(10, Math.min(70, (item.sent || 0) * 16 + (item.completed ? 18 : 0) + Math.round((item.accuracy || 0) / 8)));
-      return [
-        '<div class="timeline-col">',
-        '<div class="timeline-bar-wrap"><div class="timeline-bar" style="height:' + height + 'px"></div></div>',
-        '<div class="tiny">' + DLA.escapeHtml(item.label) + "</div>",
-        '<div class="tiny">' + (item.completed ? "已完成" : "未完成") + " · " + (item.accuracy || 0) + "%</div>",
-        "</div>"
-      ].join("");
-    }).join("");
+    var day;
+    for (day = 1; day <= daysInMonth; day += 1) {
+      var dateKey = [
+        year,
+        String(month + 1).padStart(2, "0"),
+        String(day).padStart(2, "0")
+      ].join("-");
+      cells.push({
+        day: day,
+        muted: false,
+        checked: Boolean(quizDoneMap[dateKey])
+      });
+    }
+
+    while (cells.length % 7 !== 0) {
+      cells.push({ day: "", muted: true, checked: false });
+    }
+
+    return cells;
+  }
+
+  function renderTimeline() {
+    var weekdayLabels = ["日", "一", "二", "三", "四", "五", "六"];
+    var cells = buildCalendarDays();
+    refs.timeline.innerHTML = [
+      '<div class="calendar-grid">',
+      weekdayLabels.map(function (label) {
+        return '<div class="calendar-head">' + label + "</div>";
+      }).join(""),
+      cells.map(function (cell) {
+        return [
+          '<div class="calendar-cell ' + (cell.muted ? "is-muted" : "") + " " + (cell.checked ? "is-done" : "") + '">',
+          '<div class="calendar-day">' + (cell.day || "") + "</div>",
+          cell.checked ? '<div class="calendar-mark">✓</div>' : "",
+          "</div>"
+        ].join("");
+      }).join(""),
+      "</div>"
+    ].join("");
+  }
+
+  function buildSessionHref(session) {
+    return "/today?email=" + encodeURIComponent(email) + "&date=" + encodeURIComponent(session.date || "");
   }
 
   function renderList() {
@@ -42,32 +89,24 @@
       return;
     }
 
-    if (!selectedId) selectedId = list[0].id;
     refs.sessionList.innerHTML = list.map(function (session) {
       var types = (session.learningTypes || []).map(DLA.labelForType).join(" / ");
       var reviewLabel = session.quizResult ? (session.quizResult.accuracy + "%") : "未测验";
       return [
-        '<button class="session-item ' + (selectedId === session.id ? "active" : "") + '" data-id="' + session.id + '" type="button">',
+        '<a class="session-link" href="' + buildSessionHref(session) + '">',
         "<strong>" + DLA.escapeHtml(session.date) + "</strong>",
         '<div class="tiny">' + DLA.escapeHtml(types) + "</div>",
-        '<div class="tiny">' + (session.completedAt ? "已完成" : "未完成") + " · " + reviewLabel + "</div>",
-        "</button>"
+        '<div class="tiny">' + (session.completedAt ? "已完成" : "未完成") + " / " + reviewLabel + "</div>",
+        "</a>"
       ].join("");
     }).join("");
 
-    Array.from(refs.sessionList.querySelectorAll("[data-id]")).forEach(function (button) {
-      button.addEventListener("click", function () {
-        selectedId = button.getAttribute("data-id") || "";
-        renderList();
-      });
-    });
-
-    var target = list.filter(function (item) { return item.id === selectedId; })[0] || list[0];
+    var target = list[0];
     var morning = target && target.delivery ? target.delivery.morning : null;
     var evening = target && target.delivery ? target.delivery.evening : null;
     var typesText = (target.learningTypes || []).map(DLA.labelForType).join(" / ");
     var quizText = target.quizResult
-      ? (target.quizResult.score + "/" + target.quizResult.total + "（" + target.quizResult.accuracy + "%）")
+      ? (target.quizResult.score + "/" + target.quizResult.total + "，" + target.quizResult.accuracy + "%")
       : "未提交";
 
     refs.sessionDetail.innerHTML = [
@@ -78,6 +117,7 @@
       '<p class="muted">晨间邮件：' + (morning ? ("打开 " + (morning.opens || 0) + " / 点击 " + (morning.clicks || 0)) : "未发送") + "</p>",
       '<p class="muted">晚间邮件：' + (evening ? ("打开 " + (evening.opens || 0) + " / 点击 " + (evening.clicks || 0)) : "未发送") + "</p>",
       '<p class="muted">测验结果：' + quizText + "</p>",
+      '<div class="detail-actions"><a class="btn" href="' + buildSessionHref(target) + '"><span>查看当日学习内容</span></a></div>',
       "</article>"
     ].join("");
   }
@@ -110,12 +150,23 @@
     DLA.rememberEmail(email);
     try {
       state = await DLA.fetchJson("/api/state?email=" + encodeURIComponent(email));
+      if (state && state.profile) {
+        DLA.cacheState(email, state);
+      } else {
+        state = DLA.loadCachedState(email);
+      }
       if (!state || !state.profile) {
         showEmpty();
         return;
       }
       render();
     } catch (error) {
+      state = DLA.loadCachedState(email);
+      if (state && state.profile) {
+        render();
+        DLA.showToast("当前读取的是本机缓存记录。");
+        return;
+      }
       DLA.showToast(error.message || "加载失败");
       showEmpty();
     }

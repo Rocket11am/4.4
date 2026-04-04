@@ -211,7 +211,7 @@ function buildClientState(email) {
       : null,
     stats,
     activeSession,
-    history: sessions.slice(0, 12),
+    history: sessions,
     timeline: buildTimeline(sessions),
     logs: [...store.logs].reverse().slice(0, 8),
     availableTypes: Object.entries(TYPE_META).map(([id, meta]) => ({

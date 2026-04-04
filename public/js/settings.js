@@ -78,8 +78,11 @@
     };
 
     try {
-      await DLA.fetchJson("/api/profile", { method: "POST", body: payload });
+      var response = await DLA.fetchJson("/api/profile", { method: "POST", body: payload });
       DLA.rememberEmail(email);
+      if (response && response.profile) {
+        DLA.cacheState(email, response);
+      }
       window.location.href = "/today?email=" + encodeURIComponent(email);
     } catch (error) {
       DLA.showToast(error.message || "保存失败");
@@ -103,10 +106,19 @@
     try {
       var state = await DLA.fetchJson("/api/state?email=" + encodeURIComponent(email));
       if (state && state.profile) {
+        DLA.cacheState(email, state);
         fillForm(state.profile);
         DLA.fillEmailLinks(state.profile.email);
+        return;
       }
     } catch (error) {
+      var cachedState = DLA.loadCachedState(email);
+      if (cachedState && cachedState.profile) {
+        fillForm(cachedState.profile);
+        DLA.fillEmailLinks(cachedState.profile.email);
+        DLA.showToast("当前读取的是本机缓存设置。");
+        return;
+      }
       DLA.showToast(error.message || "加载失败，可直接手动填写设置");
     }
   }

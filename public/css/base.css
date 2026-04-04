@@ -298,14 +298,19 @@ textarea {
   border: 1px solid var(--border);
   background: var(--card-strong);
   padding: 10px 12px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .stat-item b {
   display: block;
   font-family: "Orbitron", "Microsoft YaHei", sans-serif;
-  font-size: 24px;
+  font-size: clamp(18px, 2.2vw, 24px);
   color: var(--cyan);
   margin-top: 6px;
+  line-height: 1.2;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .list {

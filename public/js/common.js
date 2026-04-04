@@ -1,5 +1,6 @@
 (function initDlaCommon() {
   var STORAGE_KEY = "daily-learning-assistant:last-email";
+  var STATE_PREFIX = "daily-learning-assistant:state:";
 
   function getParam(name) {
     try {
@@ -11,6 +12,11 @@
 
   function normalizeEmail(value) {
     return String(value || "").trim();
+  }
+
+  function getStateStorageKey(email) {
+    var clean = normalizeEmail(email).toLowerCase();
+    return STATE_PREFIX + clean;
   }
 
   function rememberEmail(email) {
@@ -33,6 +39,25 @@
     return normalizeEmail(getParam("email") || loadRememberedEmail());
   }
 
+  function cacheState(email, state) {
+    var clean = normalizeEmail(email || (state && state.profile && state.profile.email));
+    if (!clean || !state) return;
+    try {
+      window.localStorage.setItem(getStateStorageKey(clean), JSON.stringify(state));
+    } catch (e) {}
+  }
+
+  function loadCachedState(email) {
+    var clean = normalizeEmail(email);
+    if (!clean) return null;
+    try {
+      var raw = window.localStorage.getItem(getStateStorageKey(clean));
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   function safeGet(obj, path, fallback) {
     var target = obj;
     var i;
@@ -48,11 +73,7 @@
     if (config.body && typeof config.body !== "string") {
       config.body = JSON.stringify(config.body);
     }
-    config.headers = Object.assign(
-      {},
-      config.headers || {},
-      config.body ? { "Content-Type": "application/json" } : {}
-    );
+    config.headers = Object.assign({}, config.headers || {}, config.body ? { "Content-Type": "application/json" } : {});
 
     var response = await fetch(url, config);
     var data;
@@ -63,7 +84,7 @@
     }
 
     if (!response.ok || data.ok === false) {
-      throw new Error(data.message || ("请求失败（" + response.status + "）"));
+      throw new Error(data.message || ("请求失败：" + response.status));
     }
     return data;
   }
@@ -154,6 +175,8 @@
     getParam: getParam,
     getEmailFromUrlOrStorage: getEmailFromUrlOrStorage,
     rememberEmail: rememberEmail,
+    cacheState: cacheState,
+    loadCachedState: loadCachedState,
     fetchJson: fetchJson,
     labelForType: labelForType,
     formatDateTime: formatDateTime,
