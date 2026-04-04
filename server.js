@@ -550,11 +550,7 @@ async function createSession(user, mode, options = {}) {
     delivery: { morning: null, evening: null }
   };
 
-  if (generated.quiz && Array.isArray(generated.quiz.questions) && generated.quiz.questions.length) {
-    session.quiz = { questions: generated.quiz.questions.map((q) => ({ ...q })) };
-  } else {
-    session.quiz = session.reviewEligible ? buildQuizForSession(session) : null;
-  }
+  session.quiz = session.reviewEligible ? buildQuizForSession(session) : null;
   return session;
 }
 
@@ -1025,7 +1021,100 @@ function buildCustomTopicItem(topic, level, index) {
 function buildQuizForSession(session) {
   const reviewItems = session.items.filter((item) => TYPE_META[item.type]?.reviewEligible).slice(0, 5);
   return {
-    questions: reviewItems.map((item, index) => buildQuestion(session.id, item, index))
+    questions: reviewItems.map((item, index) => buildChoiceQuestion(session.id, item, index))
+  };
+}
+
+function buildChoiceQuestion(sessionId, item, index) {
+  const variant = index % 3;
+  const id = `${sessionId}-${index + 1}`;
+
+  if (item.type === "spoken") {
+    const spokenPool = contentPool.filter((entry) => entry.type === "spoken");
+    const chineseDistractors = shuffle(
+      spokenPool
+        .filter((entry) => normalizeLoose(entry.chinese) !== normalizeLoose(item.chinese))
+        .map((entry) => entry.chinese)
+    ).slice(0, 3);
+    const englishDistractors = shuffle(
+      spokenPool
+        .filter((entry) => normalizeLoose(entry.headline) !== normalizeLoose(item.headline))
+        .map((entry) => entry.headline)
+    ).slice(0, 3);
+
+    if (variant === 0) {
+      return {
+        id,
+        type: "choice",
+        prompt: `这句口语更贴近哪种中文含义？${item.headline}`,
+        answer: item.chinese,
+        options: shuffle([item.chinese, ...chineseDistractors]),
+        hint: item.scene || ""
+      };
+    }
+
+    if (variant === 1) {
+      return {
+        id,
+        type: "choice",
+        prompt: `这句表达的正确中文翻译是？${item.headline}`,
+        answer: item.chinese,
+        options: shuffle([item.chinese, ...chineseDistractors]),
+        hint: item.scene || ""
+      };
+    }
+
+    return {
+      id,
+      type: "choice",
+      prompt: `根据中文选择更自然的英文表达：${item.chinese}`,
+      answer: item.headline,
+      options: shuffle([item.headline, ...englishDistractors]),
+      hint: item.scene || ""
+    };
+  }
+
+  const vocabularyPool = contentPool.filter((entry) => entry.type === "vocabulary");
+  const chineseDistractors = shuffle(
+    vocabularyPool
+      .filter((entry) => normalizeLoose(entry.chinese) !== normalizeLoose(item.chinese))
+      .map((entry) => entry.chinese)
+  ).slice(0, 3);
+  const englishDistractors = shuffle(
+    vocabularyPool
+      .filter((entry) => normalizeLoose(entry.headline) !== normalizeLoose(item.headline))
+      .map((entry) => entry.headline)
+  ).slice(0, 3);
+
+  if (variant === 0) {
+    return {
+      id,
+      type: "choice",
+      prompt: `“${item.headline}” 的中文意思是什么？`,
+      answer: item.chinese,
+      options: shuffle([item.chinese, ...chineseDistractors]),
+      hint: item.phonetic || ""
+    };
+  }
+
+  if (variant === 1) {
+    return {
+      id,
+      type: "choice",
+      prompt: `根据中文选择正确单词：${item.chinese}`,
+      answer: item.headline,
+      options: shuffle([item.headline, ...englishDistractors]),
+      hint: item.phonetic || ""
+    };
+  }
+
+  return {
+    id,
+    type: "choice",
+    prompt: `补全例句中的单词：${(item.example || "").replace(new RegExp(escapeRegExp(item.headline), "i"), "_____")}`,
+    answer: item.headline,
+    options: shuffle([item.headline, ...englishDistractors]),
+    hint: item.chinese || ""
   };
 }
 
