@@ -12,7 +12,7 @@
     "nextContentIndex": 1,
     "typeCursor": {
       "spoken": 0,
-      "vocabulary": 1,
+      "vocabulary": 0,
       "finance": 1
     }
   },
@@ -1862,6 +1862,133 @@
         }
       ],
       "currentLevel": 3
+    },
+    "2630896019@qq.com": {
+      "email": "2630896019@qq.com",
+      "preferences": {
+        "dailyCount": 3,
+        "learningTypes": [
+          "spoken",
+          "vocabulary"
+        ],
+        "customTopic": "",
+        "sendTime": "07:30",
+        "reviewEnabled": true,
+        "reviewTime": "20:30",
+        "backupChannel": "wechat",
+        "backupContact": ""
+      },
+      "sessions": [
+        {
+          "id": "1775284670126_d85bb3",
+          "email": "2630896019@qq.com",
+          "date": "2026-04-04",
+          "createdAt": "2026-04-04T06:37:50.126Z",
+          "mode": "manual",
+          "learningTypes": [
+            "spoken",
+            "vocabulary"
+          ],
+          "customTopic": "",
+          "difficultyLevel": 1,
+          "generationMode": "curated-fallback",
+          "items": [
+            {
+              "id": "spoken-1",
+              "type": "spoken",
+              "level": 1,
+              "headline": "That makes sense.",
+              "chinese": "这就说得通了。",
+              "phonetic": "",
+              "scene": "理解对方解释后的回应",
+              "example": "You left early because of the traffic. That makes sense.",
+              "summary": "",
+              "takeaway": "",
+              "keywords": [],
+              "source": "database"
+            },
+            {
+              "id": "voc-2",
+              "type": "vocabulary",
+              "level": 1,
+              "headline": "accurate",
+              "chinese": "准确的",
+              "phonetic": "/ˈækjərət/",
+              "scene": "",
+              "example": "The summary is short but accurate.",
+              "summary": "",
+              "takeaway": "描述信息、数据和判断是否精确。",
+              "keywords": [],
+              "source": "database"
+            },
+            {
+              "id": "spoken-2",
+              "type": "spoken",
+              "level": 1,
+              "headline": "I'm still figuring it out.",
+              "chinese": "我还在摸索中。",
+              "phonetic": "",
+              "scene": "计划尚未完全明确时",
+              "example": "I haven't chosen a final topic yet. I'm still figuring it out.",
+              "summary": "",
+              "takeaway": "",
+              "keywords": [],
+              "source": "database"
+            }
+          ],
+          "reviewEligible": true,
+          "completedAt": null,
+          "completionSource": null,
+          "quiz": {
+            "questions": [
+              {
+                "id": "1775284670126_d85bb3-1",
+                "type": "choice",
+                "prompt": "这句口语更贴近哪一种中文含义？That makes sense.",
+                "answer": "这就说得通了。",
+                "options": [
+                  "我们明天再回头看这个可以吗？",
+                  "这就说得通了。",
+                  "我会稍微换个角度来表述。",
+                  "我们一起过一遍吧。"
+                ],
+                "hint": "理解对方解释后的回应"
+              },
+              {
+                "id": "1775284670126_d85bb3-2",
+                "type": "text",
+                "prompt": "根据中文写出单词：准确的",
+                "answer": "accurate",
+                "hint": "/ˈækjərət/"
+              },
+              {
+                "id": "1775284670126_d85bb3-3",
+                "type": "text",
+                "prompt": "根据中文写出更自然的英文表达：我还在摸索中。",
+                "answer": "I'm still figuring it out.",
+                "hint": "计划尚未完全明确时"
+              }
+            ]
+          },
+          "quizSentAt": null,
+          "quizMode": null,
+          "quizResult": null,
+          "delivery": {
+            "morning": {
+              "id": "1775284676310_32294b",
+              "sentAt": "2026-04-04T06:37:56.310Z",
+              "subject": "每日学习助手｜2026-04-04 今日学习内容",
+              "opens": 0,
+              "clicks": 0,
+              "openedAt": null,
+              "clickedAt": null,
+              "mode": "smtp"
+            },
+            "evening": null
+          }
+        }
+      ],
+      "currentLevel": 1
     }
   },
   "logs": [
@@ -2184,6 +2311,26 @@
       "id": "1775202201134_a40a33",
       "time": "2026-04-03T07:43:21.134Z",
       "message": "13287615996@163.com 手动发送了晚间复盘"
+    },
+    {
+      "id": "1775284670047_58b340",
+      "time": "2026-04-04T06:37:50.047Z",
+      "message": "2630896019@qq.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775284670126_1871f7",
+      "time": "2026-04-04T06:37:50.126Z",
+      "message": "2630896019@qq.com 更新了学习订阅配置"
+    },
+    {
+      "id": "1775284670126_3a7876",
+      "time": "2026-04-04T06:37:50.126Z",
+      "message": "AI内容生成回退：ark-not-configured"
+    },
+    {
+      "id": "1775284676310_2787c8",
+      "time": "2026-04-04T06:37:56.310Z",
+      "message": "2630896019@qq.com 手动发送了今日学习内容"
     }
   ]
 }

@@ -109,19 +109,42 @@ textarea {
 .nav-row {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.nav-row::-webkit-scrollbar {
+  display: none;
 }
 
 .nav-link {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  min-width: 84px;
   border: 1px solid transparent;
   padding: 8px 10px;
   font-size: 13px;
   color: var(--text-dim);
+  transition: border-color 120ms linear, background-color 120ms linear, color 120ms linear, box-shadow 120ms linear;
 }
 
 .nav-link:hover {
   border-color: var(--magenta);
   color: var(--cyan);
+  background: rgba(255, 0, 255, 0.08);
+}
+
+.nav-link.is-active {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(0, 255, 255, 0.14);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.25);
 }
 
 .main {

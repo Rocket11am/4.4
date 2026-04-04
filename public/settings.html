@@ -17,17 +17,18 @@
       <strong>每日学习助手</strong>
     </a>
     <nav class="nav-row">
+      <a class="nav-link" href="/">首页</a>
       <a class="nav-link" data-email-link="/today" href="/today">今日学习</a>
       <a class="nav-link" data-email-link="/history" href="/history">学习记录</a>
-      <a class="nav-link" href="/">首页</a>
+      <a class="nav-link" data-email-link="/settings" href="/settings">设置</a>
     </nav>
   </header>
 
   <main class="main site-shell settings-shell">
     <section id="settings-empty" class="card center-note" hidden>
       <h1 class="section-title">未检测到邮箱</h1>
-      <p class="muted">请先完成首次配置。</p>
-      <p><a class="btn" href="/onboarding"><span>去配置</span></a></p>
+      <p class="muted">请先在本页填写并保存设置。</p>
+      <p><a class="btn" href="/settings"><span>去设置</span></a></p>
     </section>
 
     <section id="settings-content" class="card" hidden>
@@ -40,17 +41,12 @@
         </div>
 
         <div class="field">
-          <label class="label" for="custom-topic">自定义主题（可选）</label>
-          <textarea class="textarea" id="custom-topic"></textarea>
-        </div>
-
-        <div class="field">
           <span class="label">学习类型（可多选）</span>
           <div id="type-choices" class="chip-row">
-            <button class="chip" type="button" data-type="spoken">英语口语</button>
-            <button class="chip" type="button" data-type="vocabulary">英语单词</button>
-            <button class="chip" type="button" data-type="finance">财经新闻</button>
-            <button class="chip" type="button" data-type="custom">自定义主题</button>
+            <button class="chip" type="button" data-type="spoken">地道口语表达</button>
+            <button class="chip" type="button" data-type="vocabulary">单词记忆</button>
+            <button class="chip" type="button" data-type="finance">每日财经资讯</button>
+            <button class="chip" type="button" data-type="ai_news">每日AI前沿资讯</button>
           </div>
         </div>
 
@@ -58,11 +54,12 @@
           <div class="field">
             <label class="label" for="daily-count">每日条数</label>
             <select class="select" id="daily-count">
-              <option value="2">2 条</option>
-              <option value="3">3 条</option>
-              <option value="4">4 条</option>
               <option value="5">5 条</option>
               <option value="6">6 条</option>
+              <option value="7">7 条</option>
+              <option value="8">8 条</option>
+              <option value="9">9 条</option>
+              <option value="10">10 条</option>
             </select>
           </div>
           <div class="field">

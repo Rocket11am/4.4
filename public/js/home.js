@@ -1,5 +1,5 @@
 (function homePage() {
-  const refs = {
+  var refs = {
     heroEmail: document.getElementById("hero-email"),
     heroStreak: document.getElementById("hero-streak"),
     heroRate: document.getElementById("hero-rate"),
@@ -8,18 +8,18 @@
   };
 
   async function init() {
-    const email = DLA.getEmailFromUrlOrStorage();
+    var email = DLA.getEmailFromUrlOrStorage();
     DLA.fillEmailLinks(email);
-
     if (!email) return;
+
     refs.heroEmail.textContent = email;
-    refs.startNow.href = `/onboarding?email=${encodeURIComponent(email)}`;
+    refs.startNow.href = "/settings?email=" + encodeURIComponent(email);
 
     try {
-      const state = await DLA.fetchJson(`/api/state?email=${encodeURIComponent(email)}`);
-      refs.heroStreak.textContent = `${state?.stats?.streak || 0} 天`;
-      refs.heroRate.textContent = `${state?.stats?.completionRate || 0}%`;
-      refs.heroNext.textContent = state?.profile?.sendTime || "--:--";
+      var state = await DLA.fetchJson("/api/state?email=" + encodeURIComponent(email));
+      refs.heroStreak.textContent = String(DLA.safeGet(state, ["stats", "streak"], 0)) + " 天";
+      refs.heroRate.textContent = String(DLA.safeGet(state, ["stats", "completionRate"], 0)) + "%";
+      refs.heroNext.textContent = DLA.safeGet(state, ["profile", "sendTime"], "--:--");
     } catch (error) {
       DLA.showToast(error.message || "获取状态失败");
     }
