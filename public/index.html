@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>每日学习助手 | 首页</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+  <header class="site-header site-shell">
+    <a class="brand" href="/">
+      <span class="brand-kicker">&gt; vaporwave learning</span>
+      <strong>每日学习助手</strong>
+    </a>
+    <nav class="nav-row">
+      <a class="nav-link" href="/">首页</a>
+      <a class="nav-link" href="/onboarding">首次配置</a>
+      <a class="nav-link" data-email-link="/today" href="/today">今日学习</a>
+      <a class="nav-link" data-email-link="/history" href="/history">学习记录</a>
+      <a class="nav-link" data-email-link="/settings" href="/settings">设置</a>
+    </nav>
+  </header>
+
+  <main class="main site-shell">
+    <section class="hero card">
+      <p class="tiny">&gt; 数字化学习闭环</p>
+      <h1 class="terminal-title">每天自动推送<br>每天轻量进步</h1>
+      <p class="muted">
+        你选择学习方向，系统按时间自动推送学习内容到邮箱，并记录完成、复习与趋势数据。
+      </p>
+      <div class="hero-actions">
+        <a id="start-now" class="btn" href="/onboarding"><span>立即开始</span></a>
+        <a class="btn btn-alt" data-email-link="/today" href="/today"><span>进入今日学习</span></a>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-item"><span>当前邮箱</span><b id="hero-email">未登录</b></div>
+        <div class="stat-item"><span>连续学习</span><b id="hero-streak">0 天</b></div>
+        <div class="stat-item"><span>完成率</span><b id="hero-rate">0%</b></div>
+        <div class="stat-item"><span>下次提醒</span><b id="hero-next">--:--</b></div>
+      </div>
+    </section>
+
+    <section class="grid-3 value-grid">
+      <article class="card">
+        <h2 class="section-title">核心价值</h2>
+        <p class="muted">把“设置学习计划、接收内容、完成打卡、查看趋势”合并为单一产品流程。</p>
+      </article>
+      <article class="card">
+        <h2 class="section-title">学习类型</h2>
+        <div class="chip-row">
+          <span class="chip">英语口语</span>
+          <span class="chip">英语单词</span>
+          <span class="chip">财经新闻</span>
+          <span class="chip">自定义主题</span>
+        </div>
+      </article>
+      <article class="card">
+        <h2 class="section-title">示例内容</h2>
+        <p class="muted">单词 + 场景例句，或财经摘要 + 启发；支持晚间复习测验。</p>
+      </article>
+    </section>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script src="/js/home.js"></script>
+</body>
+</html>
