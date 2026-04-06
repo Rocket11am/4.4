@@ -13,11 +13,16 @@ const DATA_DIR = process.env.VERCEL ? path.join(RUNTIME_ROOT, "daily-learning-as
 const STORE_PATH = path.join(DATA_DIR, "store.json");
 const CONTENT_PATH = path.join(DATA_DIR, "content.json");
 const TRACKING_GIF = Buffer.from("R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", "base64");
+const ARK_API_KEY = String(process.env.ARK_API_KEY || "").trim();
+const ARK_BASE_URL = String(process.env.ARK_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3").trim().replace(/\/$/, "");
+const ARK_MODEL = String(process.env.ARK_MODEL || process.env.ARK_ENDPOINT_ID || "").trim();
+const ARK_TIMEOUT_MS = Number(process.env.ARK_TIMEOUT_MS || 45000);
 
 const TYPE_META = {
-  vocabulary: { label: "英语单词", reviewEligible: true, accent: "#FF3AF2" },
-  spoken: { label: "英语口语", reviewEligible: true, accent: "#00F5D4" },
-  finance: { label: "财经新闻", reviewEligible: false, accent: "#FFE600" },
+  spoken: { label: "地道口语表达", reviewEligible: true, accent: "#00F5D4" },
+  vocabulary: { label: "单词记忆", reviewEligible: true, accent: "#FF3AF2" },
+  finance: { label: "每日财经资讯", reviewEligible: false, accent: "#FFE600" },
+  ai_news: { label: "每日AI前沿资讯", reviewEligible: false, accent: "#7B2FFF" },
   custom: { label: "自定义主题", reviewEligible: false, accent: "#FF6B35" }
 };
 
@@ -25,6 +30,11 @@ const LEGACY_TYPE_MAP = {
   vocabulary: "vocabulary",
   spoken: "spoken",
   finance: "finance",
+  "ai-news": "ai_news",
+  ai_news: "ai_news",
+  ai: "ai_news",
+  aifrontier: "ai_news",
+  ai_frontier: "ai_news",
   custom: "custom",
   business: "spoken",
   travel: "spoken",
@@ -360,8 +370,18 @@ async function sendMorningLesson(email, mode) {
   let session = sortSessions(user.sessions).find((item) => item.date === today);
 
   if (!session) {
-    session = createSession(user, mode);
+    session = await createSession(user, mode);
     user.sessions.push(session);
+  } else if (mode === "manual") {
+    const regenerated = await buildDailyContent(user.preferences, deriveDifficultyLevel(user));
+    session.items = regenerated.items;
+    session.generationMode = regenerated.generationMode;
+    session.reviewEligible = hasReviewableItems(regenerated.items);
+    session.quiz = session.reviewEligible ? buildQuizForSession(session) : null;
+    session.quizResult = null;
+    session.quizSentAt = null;
+    session.quizMode = null;
+    session.createdAt = new Date().toISOString();
   }
 
   const normalizedSession = normalizeSession(session);
@@ -528,10 +548,11 @@ function submitQuiz(payload) {
   };
 }
 
-function createSession(user, mode) {
+async function createSession(user, mode) {
   const now = new Date();
   const difficultyLevel = deriveDifficultyLevel(user);
-  const items = buildDailyContent(user.preferences, difficultyLevel);
+  const generated = await buildDailyContent(user.preferences, difficultyLevel);
+  const items = generated.items;
   const session = {
     id: createId(),
     email: user.email,
@@ -541,7 +562,7 @@ function createSession(user, mode) {
     learningTypes: user.preferences.learningTypes,
     customTopic: user.preferences.customTopic,
     difficultyLevel,
-    generationMode: "curated-fallback",
+    generationMode: generated.generationMode,
     items,
     reviewEligible: hasReviewableItems(items),
     completedAt: null,
@@ -557,34 +578,256 @@ function createSession(user, mode) {
   return session;
 }
 
-function buildDailyContent(preferences, level) {
+async function buildDailyContent(preferences, level) {
   const types = normalizeLearningTypes(preferences.learningTypes);
   const count = normalizeDailyCount(preferences.dailyCount);
-  const items = [];
 
-  for (let index = 0; index < count; index += 1) {
-    const type = types[index % types.length];
-    if (type === "custom") {
-      items.push(buildCustomTopicItem(preferences.customTopic, level, index));
-      continue;
-    }
-    items.push(pickCuratedItem(type, level));
-  }
+  const aiResult = await generateDailyContentWithArk(preferences, level, count);
+  const uniqueItems = dedupeContentItems(aiResult.items || []);
+  const fallbackItems = buildFallbackItems(preferences, level, count, uniqueItems);
+  const mergedItems = dedupeContentItems([...uniqueItems, ...fallbackItems]).slice(0, count);
 
-  return items.map(normalizeContentItem);
+  return {
+    items: mergedItems.map(normalizeContentItem),
+    generationMode: aiResult.ok ? "ai+fallback" : "curated-fallback"
+  };
 }
 
-function pickCuratedItem(type, level) {
+function buildFallbackItems(preferences, level, targetCount, existingItems = []) {
+  const types = normalizeLearningTypes(preferences.learningTypes);
+  const fallback = [];
+  const existingKeys = new Set(dedupeContentItems(existingItems).map(itemUniqKey));
+  let index = 0;
+  let guard = 0;
+  const maxGuard = targetCount * 20;
+
+  while (fallback.length < targetCount && guard < maxGuard) {
+    guard += 1;
+    const type = types[index % types.length];
+    index += 1;
+    let item = null;
+    if (type === "custom") {
+      item = buildCustomTopicItem(preferences.customTopic, level, index);
+    } else {
+      item = pickCuratedItem(type, level, [...existingItems, ...fallback]);
+    }
+    const key = itemUniqKey(item);
+    if (!key || existingKeys.has(key)) continue;
+    existingKeys.add(key);
+    fallback.push(item);
+  }
+
+  let syntheticSerial = 1;
+  while (fallback.length < targetCount) {
+    const type = types[(index + fallback.length) % types.length] || "custom";
+    const synthetic = buildSyntheticItem(type, preferences.customTopic, level, syntheticSerial);
+    syntheticSerial += 1;
+    const key = itemUniqKey(synthetic);
+    if (!key || existingKeys.has(key)) {
+      index += 1;
+      continue;
+    }
+    existingKeys.add(key);
+    fallback.push(synthetic);
+  }
+
+  return fallback;
+}
+
+function pickCuratedItem(type, level, usedItems = []) {
   const fallback = contentPool.filter((item) => item.type === type);
   const preferred = fallback.filter((item) => item.level === level);
   const source = preferred.length ? preferred : fallback.length ? fallback : contentPool;
+  const usedKeys = new Set((Array.isArray(usedItems) ? usedItems : []).map(itemUniqKey));
 
   store.progress.typeCursor = store.progress.typeCursor || {};
   const cursor = Number(store.progress.typeCursor[type] || 0);
-  const item = source[cursor % source.length];
-  store.progress.typeCursor[type] = (cursor + 1) % source.length;
+  let item = source[cursor % source.length];
+
+  if (source.length > 1 && usedKeys.has(itemUniqKey(item))) {
+    for (let step = 1; step < source.length; step += 1) {
+      const candidate = source[(cursor + step) % source.length];
+      if (!usedKeys.has(itemUniqKey(candidate))) {
+        item = candidate;
+        break;
+      }
+    }
+  }
+
+  const finalIndex = source.findIndex((entry) => entry.id === item.id);
+  store.progress.typeCursor[type] = ((finalIndex >= 0 ? finalIndex : cursor) + 1) % source.length;
 
   return { ...item, source: "database" };
+}
+
+async function generateDailyContentWithArk(preferences, level, dailyCount) {
+  if (!ARK_API_KEY || !ARK_MODEL) {
+    return { ok: false, items: [] };
+  }
+
+  const learningTypes = normalizeLearningTypes(preferences.learningTypes);
+  const customTopic = String(preferences.customTopic || "").trim();
+  const requestBody = {
+    model: ARK_MODEL,
+    temperature: 0.9,
+    top_p: 0.95,
+    max_tokens: 2200,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content: "你是中文每日学习内容生成助手。仅输出 JSON，不要输出任何解释文本。"
+      },
+      {
+        role: "user",
+        content: [
+          `请生成 ${dailyCount} 条学习内容，要求：`,
+          "1) 严格返回 JSON：{ \"items\": [...] }，items 长度必须等于请求条数。",
+          "2) 不得重复：headline 不能重复，内容角度不能重复。",
+          "3) 仅允许类型：spoken, vocabulary, finance, ai_news, custom。",
+          `4) 本次类型优先：${learningTypes.join(", ")}。可混合分配但必须覆盖用户选中类型。`,
+          `5) 难度等级：${level}（1-3）。spoken 与 vocabulary 难度要偏高、偏真实职场表达。`,
+          "6) finance 与 ai_news 必须是“当日重要资讯风格概述”，每条含清晰摘要和启发。",
+          `7) 如果类型为 custom，主题是：${customTopic || "用户自定义主题"}`,
+          "8) 字段规则：",
+          "- spoken: {type, headline(英文口语), chinese, scene, example, summary, takeaway}",
+          "- vocabulary: {type, headline(英文单词/短语), phonetic, chinese, example, summary, takeaway}",
+          "- finance/ai_news/custom: {type, headline, chinese, summary, takeaway, keywords}",
+          "9) 文本自然、具体，不要模板化重复句式。"
+        ].join("\n")
+      }
+    ]
+  };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ARK_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${ARK_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${ARK_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      appendLog(`ARK 生成失败 HTTP ${response.status}`);
+      return { ok: false, items: [] };
+    }
+
+    const data = await response.json();
+    const raw = data?.choices?.[0]?.message?.content || "";
+    const parsed = safeParseJsonObject(raw);
+    const items = Array.isArray(parsed?.items) ? parsed.items : [];
+    const normalized = dedupeContentItems(items).slice(0, dailyCount);
+    return { ok: normalized.length > 0, items: normalized };
+  } catch (error) {
+    appendLog(`ARK 生成异常：${error.message}`);
+    return { ok: false, items: [] };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function safeParseJsonObject(text) {
+  const source = String(text || "").trim();
+  if (!source) return {};
+  try {
+    return JSON.parse(source);
+  } catch {}
+
+  const fenceMatch = source.match(/```json\s*([\s\S]*?)```/i) || source.match(/```([\s\S]*?)```/i);
+  if (fenceMatch && fenceMatch[1]) {
+    try {
+      return JSON.parse(fenceMatch[1].trim());
+    } catch {}
+  }
+
+  const start = source.indexOf("{");
+  const end = source.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    try {
+      return JSON.parse(source.slice(start, end + 1));
+    } catch {}
+  }
+  return {};
+}
+
+function itemUniqKey(item) {
+  const type = normalizeItemType(item?.type);
+  const headline = normalizeLoose(String(item?.headline || ""));
+  const chinese = normalizeLoose(String(item?.chinese || ""));
+  const summary = normalizeLoose(String(item?.summary || ""));
+  return `${type}|${headline}|${chinese || summary}`;
+}
+
+function dedupeContentItems(items) {
+  const seen = new Set();
+  const result = [];
+  (Array.isArray(items) ? items : []).forEach((raw) => {
+    const item = normalizeContentItem(raw);
+    const key = itemUniqKey(item);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    result.push(item);
+  });
+  return result;
+}
+
+function buildSyntheticItem(type, topic, level, serial) {
+  if (type === "spoken") {
+    return normalizeContentItem({
+      id: createId(),
+      type: "spoken",
+      level,
+      headline: `Could we align on the priority before we proceed? #${serial}`,
+      chinese: "在继续之前，我们先对优先级达成一致可以吗？",
+      scene: "项目推进前对齐优先级",
+      example: "Could we align on the priority before we proceed so we avoid rework?",
+      summary: "高频职场沟通表达，强调先对齐再执行。",
+      takeaway: "用于会议推进和任务澄清。"
+    });
+  }
+  if (type === "vocabulary") {
+    return normalizeContentItem({
+      id: createId(),
+      type: "vocabulary",
+      level,
+      headline: `prioritize-${serial}`,
+      phonetic: "/praɪˈɔːrətaɪz/",
+      chinese: "确定优先级",
+      example: "We need to prioritize high-impact tasks this week.",
+      summary: "用于项目管理和时间管理语境。",
+      takeaway: "和 allocate、focus 常一起出现。"
+    });
+  }
+  if (type === "finance") {
+    return normalizeContentItem({
+      id: createId(),
+      type: "finance",
+      level,
+      headline: `Market Watch #${serial}: Risk sentiment shifts after key macro data`,
+      chinese: "关键宏观数据公布后，市场风险偏好出现切换",
+      summary: "当日关注重点是资金在防御和成长板块之间的轮动方向。",
+      takeaway: "先看数据是否超预期，再看成交量与板块扩散。",
+      keywords: ["宏观数据", "风险偏好"]
+    });
+  }
+  if (type === "ai_news") {
+    return normalizeContentItem({
+      id: createId(),
+      type: "ai_news",
+      level,
+      headline: `AI Frontline #${serial}: Model efficiency optimization becomes the new battleground`,
+      chinese: "模型效率优化成为新一轮竞争焦点",
+      summary: "业界继续围绕推理成本、响应延迟和稳定性展开工程优化。",
+      takeaway: "评估方案时同时比较质量、成本和延迟三项指标。",
+      keywords: ["模型效率", "推理优化"]
+    });
+  }
+  return buildCustomTopicItem(topic, level, serial);
 }
 
 function buildCustomTopicItem(topic, level, index) {
@@ -624,87 +867,74 @@ function buildCustomTopicItem(topic, level, index) {
 function buildQuizForSession(session) {
   const reviewItems = session.items.filter((item) => TYPE_META[item.type]?.reviewEligible).slice(0, 5);
   return {
-    questions: reviewItems.map((item, index) => buildQuestion(session.id, item, index))
+    questions: reviewItems.map((item, index) => buildChoiceQuestion(session.id, item, index)).filter(Boolean)
   };
 }
 
-function buildQuestion(sessionId, item, index) {
-  const variant = index % 3;
+function buildChoiceQuestion(sessionId, item, index) {
   const id = `${sessionId}-${index + 1}`;
 
   if (item.type === "spoken") {
     const spokenPool = contentPool.filter((entry) => entry.type === "spoken");
-    const distractors = shuffle(
+    let distractors = shuffle(
       spokenPool
         .filter((entry) => normalizeLoose(entry.chinese) !== normalizeLoose(item.chinese))
         .map((entry) => entry.chinese)
-    ).slice(0, 3);
-
-    if (variant === 0) {
-      return {
-        id,
-        type: "choice",
-        prompt: `这句口语更贴近哪一种中文含义？${item.headline}`,
-        answer: item.chinese,
-        options: shuffle([item.chinese, ...distractors]),
-        hint: item.scene || ""
-      };
+    ).slice(0, 6);
+    if (distractors.length < 3) {
+      const fallback = [
+        "这句话表示事情合理、有道理",
+        "这句话表示需要延期讨论",
+        "这句话表示仍在探索中"
+      ].filter((text) => normalizeLoose(text) !== normalizeLoose(item.chinese));
+      distractors = dedupeStrings([...distractors, ...fallback]).slice(0, 3);
     }
-
-    if (variant === 1) {
-      return {
-        id,
-        type: "text",
-        prompt: `把这句表达翻译成中文：${item.headline}`,
-        answer: item.chinese,
-        hint: item.scene || ""
-      };
-    }
-
     return {
       id,
-      type: "text",
-      prompt: `根据中文写出更自然的英文表达：${item.chinese}`,
-      answer: item.headline,
+      type: "choice",
+      prompt: `这句口语最贴近哪一个中文含义？${item.headline}`,
+      answer: item.chinese,
+      options: shuffle(dedupeStrings([item.chinese, ...distractors]).slice(0, 4)),
       hint: item.scene || ""
     };
   }
 
   const vocabularyPool = contentPool.filter((entry) => entry.type === "vocabulary");
-  const distractors = shuffle(
+  let distractors = shuffle(
     vocabularyPool
       .filter((entry) => normalizeLoose(entry.chinese) !== normalizeLoose(item.chinese))
       .map((entry) => entry.chinese)
-  ).slice(0, 3);
-
-  if (variant === 0) {
-    return {
-      id,
-      type: "choice",
-      prompt: `“${item.headline}” 的中文意思是什么？`,
-      answer: item.chinese,
-      options: shuffle([item.chinese, ...distractors]),
-      hint: item.phonetic || ""
-    };
+  ).slice(0, 6);
+  if (distractors.length < 3) {
+    const fallback = [
+      "有韧性的",
+      "可持续的",
+      "准确的",
+      "分配"
+    ].filter((text) => normalizeLoose(text) !== normalizeLoose(item.chinese));
+    distractors = dedupeStrings([...distractors, ...fallback]).slice(0, 3);
   }
-
-  if (variant === 1) {
-    return {
-      id,
-      type: "text",
-      prompt: `根据中文写出单词：${item.chinese}`,
-      answer: item.headline,
-      hint: item.phonetic || ""
-    };
-  }
-
   return {
     id,
-    type: "text",
-    prompt: `补全例句中的单词：${(item.example || "").replace(new RegExp(escapeRegExp(item.headline), "i"), "_____")}`,
-    answer: item.headline,
-    hint: item.chinese || ""
+    type: "choice",
+    prompt: `“${item.headline}” 最准确的中文释义是？`,
+    answer: item.chinese,
+    options: shuffle(dedupeStrings([item.chinese, ...distractors]).slice(0, 4)),
+    hint: item.phonetic || ""
   };
+}
+
+function dedupeStrings(values) {
+  const seen = new Set();
+  const result = [];
+  (Array.isArray(values) ? values : []).forEach((value) => {
+    const text = String(value || "").trim();
+    const key = normalizeLoose(text);
+    if (!text || seen.has(key)) return;
+    seen.add(key);
+    result.push(text);
+  });
+  return result;
 }
 
 function compareAnswer(input, answer) {
@@ -1227,7 +1457,12 @@ function seedContent() {
     { id: "finance-2", type: "finance", level: 1, headline: "Oil prices cool as traders reassess demand outlook", chinese: "交易员重新评估需求前景，油价回落", summary: "能源价格波动往往会传导到运输、制造与通胀预期。", takeaway: "阅读财经新闻时，先抓住“价格变化 + 原因 + 影响对象”三件事。", keywords: ["大宗商品", "通胀"] },
     { id: "finance-3", type: "finance", level: 2, headline: "Central bank signals patience on the next policy move", chinese: "央行释放观望信号，下一步政策动作更趋谨慎", summary: "利率路径不确定时，市场会更关注措辞、就业和通胀数据。", takeaway: "遇到政策类报道，重点看“是否超预期”和“未来路径”。", keywords: ["利率", "宏观政策"] },
     { id: "finance-4", type: "finance", level: 2, headline: "Consumer spending stays firm despite softer confidence", chinese: "消费者信心走弱，但消费支出仍有韧性", summary: "情绪指标与真实支出并不总是同步，零售数据更能体现短期韧性。", takeaway: "看经济新闻时，区分“情绪调查”和“真实数据”很重要。", keywords: ["消费", "零售"] },
-    { id: "finance-5", type: "finance", level: 3, headline: "Earnings guidance, not headline profit, drives stock reactions", chinese: "真正驱动股价反应的，常常不是利润本身，而是业绩指引", summary: "财报解读需要同时关注营收、利润率和管理层对未来季度的预期。", takeaway: "高阶阅读财经新闻时，要训练自己从“结果”转向“预期差”。", keywords: ["财报", "预期差"] }
+    { id: "finance-5", type: "finance", level: 3, headline: "Earnings guidance, not headline profit, drives stock reactions", chinese: "真正驱动股价反应的，常常不是利润本身，而是业绩指引", summary: "财报解读需要同时关注营收、利润率和管理层对未来季度的预期。", takeaway: "高阶阅读财经新闻时，要训练自己从“结果”转向“预期差”。", keywords: ["财报", "预期差"] },
+    { id: "ai-1", type: "ai_news", level: 1, headline: "Major model providers cut inference cost for long-context workloads", chinese: "多家大模型厂商下调长上下文推理成本", summary: "价格和吞吐优化推动企业把更多核心场景迁移到 API 生产环境。", takeaway: "关注“单位 token 成本 + 延迟 + 稳定性”这三项是否同时改善。", keywords: ["推理成本", "企业落地"] },
+    { id: "ai-2", type: "ai_news", level: 1, headline: "Open-source multimodal stacks accelerate private deployment", chinese: "开源多模态技术栈加速私有化部署", summary: "企业越来越倾向于“开源模型 + 自建数据管线”以平衡成本与可控性。", takeaway: "评估 AI 方案时，把“模型能力”与“工程可运维性”分开看。", keywords: ["开源模型", "私有化"] },
+    { id: "ai-3", type: "ai_news", level: 2, headline: "Agent orchestration becomes a bottleneck in production teams", chinese: "Agent 编排能力成为生产落地瓶颈", summary: "从单模型问答走向多 Agent 工作流后，监控、回滚、权限治理需求显著上升。", takeaway: "把 AI 项目当作软件工程系统建设，而不只是模型调用。", keywords: ["Agent", "工程治理"] },
+    { id: "ai-4", type: "ai_news", level: 2, headline: "Vendors race to ship retrieval tuning for domain-specific accuracy", chinese: "厂商竞相推出检索增强调优能力以提升垂直准确率", summary: "越来越多团队把效果提升重点放在检索质量、分块策略和重排模型上。", takeaway: "提升准确率时，优先优化“数据与检索”，再微调提示词。", keywords: ["RAG", "准确率"] },
+    { id: "ai-5", type: "ai_news", level: 3, headline: "AI governance standards tighten around data lineage and auditability", chinese: "AI 治理标准收紧，强调数据血缘与可审计性", summary: "监管和企业内控都在要求训练与推理链路可追踪、可解释、可复盘。", takeaway: "从早期就为日志、版本和审计留接口，避免后期返工。", keywords: ["治理", "合规"] }
   ];
 }
 
@@ -1270,9 +1505,9 @@ function normalizeEmail(value) {
 }
 
 function normalizeDailyCount(value) {
-  const count = Number(value || 3);
-  if (Number.isNaN(count)) return 3;
-  return Math.max(1, Math.min(6, count));
+  const count = Number(value || 5);
+  if (Number.isNaN(count)) return 5;
+  return Math.max(5, Math.min(10, count));
 }
 
 function normalizeLearningTypes(value) {
@@ -1285,7 +1520,7 @@ function normalizeLearningTypes(value) {
   const mapped = raw.flatMap((entry) => {
     const clean = String(entry || "").trim();
     if (!clean) return [];
-    if (clean === "all") return ["vocabulary", "spoken", "finance"];
+    if (clean === "all") return ["vocabulary", "spoken", "finance", "ai_news"];
     const mappedType = LEGACY_TYPE_MAP[clean];
     return mappedType ? [mappedType] : [];
   });
