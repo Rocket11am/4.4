@@ -105,8 +105,8 @@
   transform: scale(var(--pet-scale));
   transform-origin: center center;
   background-image: url("/images/pet-template.jpg");
-  background-position: 50% 78%;
-  background-size: 240%;
+  background-position: center center;
+  background-size: contain;
   background-repeat: no-repeat;
   image-rendering: pixelated;
   filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.16));
@@ -127,15 +127,15 @@
 }
 
 .pet-stage-seed {
-  --pet-scale: 0.96;
+  --pet-scale: 0.94;
 }
 
 .pet-stage-spark {
-  --pet-scale: 1.06;
+  --pet-scale: 1;
 }
 
 .pet-stage-legend {
-  --pet-scale: 1.16;
+  --pet-scale: 1.06;
 }
 
 .pet-meta {
