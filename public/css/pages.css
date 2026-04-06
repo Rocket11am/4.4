@@ -61,18 +61,20 @@
 
 .today-shell {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   align-items: start;
 }
 
 .today-main-grid {
   display: grid;
-  gap: 12px;
+  gap: 14px;
+  align-items: stretch;
 }
 
 .review-shell {
   display: grid;
-  gap: 12px;
+  gap: 14px;
+  align-items: stretch;
 }
 
 .today-status-card,
@@ -80,21 +82,25 @@
 .review-panel,
 .pet-panel {
   min-height: 0;
+  padding: 14px;
 }
 
 .today-items-card .list {
-  max-height: 220px;
+  max-height: 210px;
   overflow: auto;
 }
 
 .pet-panel {
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .pet-shell {
   display: grid;
-  gap: 4px;
+  gap: 8px;
   align-items: start;
+  flex: 1;
 }
 
 .pet-avatar {
@@ -152,9 +158,9 @@
 
 .pet-meta {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   align-content: start;
-  margin-top: -2px;
+  margin-top: 0;
 }
 
 .pet-name-row {
@@ -208,6 +214,7 @@
   border: 1px solid var(--border);
   background: var(--card-strong);
   padding: 8px 10px;
+  margin-top: 2px;
 }
 
 .pet-progress-top {
@@ -441,10 +448,20 @@
 
 .review-panel {
   scroll-margin-top: 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .wrong-panel {
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.review-panel .list,
+.wrong-panel .list {
+  max-height: 340px;
+  overflow: auto;
 }
 
 .quiz-shell {
@@ -531,6 +548,18 @@
   color: var(--success);
 }
 
+@media (max-width: 959px) {
+  .today-items-card .list,
+  .review-panel .list,
+  .wrong-panel .list {
+    max-height: none;
+  }
+
+  .pet-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (min-width: 960px) {
   .hero-grid {
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
@@ -538,8 +567,8 @@
   }
 
   .today-main-grid {
-    grid-template-columns: 1.2fr 1fr;
-    align-items: start;
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
   }
 
   .today-status-card {
@@ -555,10 +584,12 @@
   .pet-panel {
     grid-column: 2;
     grid-row: 1 / span 2;
+    align-self: stretch;
   }
 
   .review-shell {
     grid-template-columns: 1fr 1fr;
+    align-items: stretch;
   }
 
   .trend-shell {
@@ -567,7 +598,8 @@
   }
 
   .pet-shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: 170px minmax(0, 1fr);
+    align-items: start;
   }
 
   .history-shell {
