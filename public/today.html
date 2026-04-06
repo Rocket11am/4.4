@@ -32,65 +32,72 @@
     </section>
 
     <section id="today-content" class="today-shell" hidden>
-      <article class="card today-status-card">
-        <p class="tiny">&gt; daily status</p>
-        <h1 class="terminal-title">今日学习</h1>
-        <div class="stat-grid">
-          <div class="stat-item"><span>连续学习</span><b id="streak">0 天</b></div>
-          <div class="stat-item"><span>今日完成</span><b id="done-flag">未完成</b></div>
-          <div class="stat-item"><span>完成率</span><b id="completion-rate">0%</b></div>
-          <div class="stat-item">
-            <span>下次提醒</span>
-            <b id="next-reminder">--:--</b>
-            <div class="tiny">晚间推送：<span id="evening-reminder">--:--</span></div>
+      <section class="today-main-grid">
+        <article class="card today-status-card">
+          <p class="tiny">&gt; daily status</p>
+          <h1 class="terminal-title">今日学习</h1>
+          <div class="stat-grid">
+            <div class="stat-item"><span>连续学习</span><b id="streak">0 天</b></div>
+            <div class="stat-item"><span>今日完成</span><b id="done-flag">未完成</b></div>
+            <div class="stat-item"><span>完成率</span><b id="completion-rate">0%</b></div>
+            <div class="stat-item">
+              <span>下次提醒</span>
+              <b id="next-reminder">--:--</b>
+              <div class="tiny">晚间推送：<span id="evening-reminder">--:--</span></div>
+            </div>
           </div>
-        </div>
-        <div class="today-actions" style="margin-top:12px;">
-          <button id="complete-btn" class="btn"><span>完成今日学习</span></button>
-          <button id="send-morning-btn" class="btn btn-alt"><span>发送今日内容</span></button>
-          <button id="send-evening-btn" class="btn btn-alt"><span>发送晚间复习</span></button>
-        </div>
-      </article>
+          <div class="today-actions" style="margin-top:12px;">
+            <button id="complete-btn" class="btn"><span>完成今日学习</span></button>
+            <button id="send-morning-btn" class="btn btn-alt"><span>发送今日内容</span></button>
+            <button id="send-evening-btn" class="btn btn-alt"><span>发送晚间复习</span></button>
+          </div>
+        </article>
 
-      <article class="card pet-panel">
-        <p class="tiny">&gt; virtual pet</p>
-        <h2 class="section-title">电子宠物</h2>
-        <div class="pet-shell">
-          <div id="pet-avatar" class="pet-avatar pet-stage-seed" aria-hidden="true"></div>
-          <div class="pet-meta">
-            <div class="pet-name-row">
-              <strong id="pet-name" class="pet-name">小闪电</strong>
-              <span id="pet-stage-label" class="pet-badge">像素幼宠</span>
-            </div>
-            <div class="pet-stats">
-              <div class="pet-stat"><span>年龄</span><b id="pet-age">1 岁</b></div>
-              <div class="pet-stat"><span>等级</span><b id="pet-level">Lv.1</b></div>
-              <div class="pet-stat"><span>累计喂养</span><b id="pet-feeds">0 次</b></div>
-              <div class="pet-stat"><span>今日喂养</span><b id="pet-fed-today">未喂养</b></div>
-            </div>
-            <p id="pet-mood" class="muted">等待你完成今天的学习任务。</p>
-            <div class="pet-progress">
-              <div class="pet-progress-top">
-                <span>本轮成长进度</span>
-                <span id="pet-progress-text">0 / 10</span>
+        <article class="card pet-panel">
+          <p class="tiny">&gt; virtual pet</p>
+          <h2 class="section-title">电子宠物</h2>
+          <div class="pet-shell">
+            <div id="pet-avatar" class="pet-avatar pet-stage-seed" aria-hidden="true"></div>
+            <div class="pet-meta">
+              <div class="pet-name-row">
+                <strong id="pet-name" class="pet-name">小闪电</strong>
+                <span id="pet-stage-label" class="pet-badge">像素幼宠</span>
               </div>
-              <div class="pet-progress-bar"><div id="pet-progress-bar" class="pet-progress-fill" style="width:0%"></div></div>
-              <p id="pet-next-tip" class="tiny">再连续完成 10 天，宠物会成长一级。</p>
+              <div class="pet-stats">
+                <div class="pet-stat"><span>年龄</span><b id="pet-age">1 岁</b></div>
+                <div class="pet-stat"><span>等级</span><b id="pet-level">Lv.1</b></div>
+                <div class="pet-stat"><span>累计喂养</span><b id="pet-feeds">0 次</b></div>
+                <div class="pet-stat"><span>今日喂养</span><b id="pet-fed-today">未喂养</b></div>
+              </div>
+              <p id="pet-mood" class="muted">等待投喂</p>
+              <div class="pet-progress">
+                <div class="pet-progress-top">
+                  <span>本轮成长进度</span>
+                  <span id="pet-progress-text">0 / 10</span>
+                </div>
+                <div class="pet-progress-bar"><div id="pet-progress-bar" class="pet-progress-fill" style="width:0%"></div></div>
+                <p id="pet-next-tip" class="tiny">再连续完成 10 天，宠物会成长一级。</p>
+              </div>
             </div>
           </div>
-        </div>
-      </article>
+        </article>
 
-      <article id="today-items-card" class="card today-items-card" hidden>
-        <h2 class="section-title">学习内容</h2>
-        <div id="today-items" class="list"></div>
-      </article>
+        <article id="today-items-card" class="card today-items-card" hidden>
+          <h2 class="section-title">学习内容</h2>
+          <div id="today-items" class="list"></div>
+        </article>
+      </section>
 
-      <article class="card review-panel" id="review-panel">
-        <h2 class="section-title">晚间复习</h2>
-        <form id="quiz-form" class="list"></form>
-        <div id="quiz-wrong" class="list" style="margin-top:12px;"></div>
-      </article>
+      <section class="review-shell">
+        <article class="card review-panel" id="review-panel">
+          <h2 class="section-title">晚间复习</h2>
+          <form id="quiz-form" class="list"></form>
+        </article>
+        <article class="card wrong-panel">
+          <h2 class="section-title">本次错题</h2>
+          <div id="quiz-wrong" class="list"></div>
+        </article>
+      </section>
     </section>
   </main>
 

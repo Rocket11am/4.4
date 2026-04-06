@@ -65,6 +65,16 @@
   align-items: start;
 }
 
+.today-main-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.review-shell {
+  display: grid;
+  gap: 12px;
+}
+
 .today-status-card,
 .today-items-card,
 .review-panel,
@@ -362,6 +372,10 @@
   scroll-margin-top: 20px;
 }
 
+.wrong-panel {
+  min-height: 0;
+}
+
 .quiz-shell {
   display: grid;
   gap: 12px;
@@ -452,7 +466,7 @@
     align-items: stretch;
   }
 
-  .today-shell {
+  .today-main-grid {
     grid-template-columns: 1.2fr 1fr;
     align-items: start;
   }
@@ -462,19 +476,18 @@
     grid-row: 1;
   }
 
-  .pet-panel {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
   .today-items-card {
     grid-column: 1;
     grid-row: 2;
   }
 
-  .review-panel {
+  .pet-panel {
     grid-column: 2;
-    grid-row: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .review-shell {
+    grid-template-columns: 1fr 1fr;
   }
 
   .pet-shell {
