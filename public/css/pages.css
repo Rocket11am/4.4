@@ -104,7 +104,7 @@
   inset: 0;
   transform: scale(var(--pet-scale));
   transform-origin: center center;
-  background-image: url("/images/pet-template.jpg");
+  background-image: url("/images/pet-template.png");
   background-position: center center;
   background-size: contain;
   background-repeat: no-repeat;
