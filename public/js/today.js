@@ -3,18 +3,17 @@
     missingEmail: document.getElementById("missing-email"),
     todayContent: document.getElementById("today-content"),
     todayItemsCard: document.getElementById("today-items-card"),
-    wrongbookCard: document.getElementById("wrongbook-card"),
     streak: document.getElementById("streak"),
     doneFlag: document.getElementById("done-flag"),
     completionRate: document.getElementById("completion-rate"),
     nextReminder: document.getElementById("next-reminder"),
+    eveningReminder: document.getElementById("evening-reminder"),
     completeBtn: document.getElementById("complete-btn"),
     sendMorningBtn: document.getElementById("send-morning-btn"),
     sendEveningBtn: document.getElementById("send-evening-btn"),
     todayItems: document.getElementById("today-items"),
     quizForm: document.getElementById("quiz-form"),
     quizWrong: document.getElementById("quiz-wrong"),
-    wrongbookList: document.getElementById("wrongbook-list"),
     reviewPanel: document.getElementById("review-panel"),
     petAvatar: document.getElementById("pet-avatar"),
     petName: document.getElementById("pet-name"),
@@ -49,7 +48,6 @@
     refs.missingEmail.hidden = false;
     refs.todayContent.hidden = true;
     refs.todayItemsCard.hidden = true;
-    refs.wrongbookCard.hidden = true;
   }
 
   function renderItems(session) {
@@ -100,9 +98,7 @@
       return;
     }
     refs.quizWrong.innerHTML = [
-      '<article class="list-item">',
-      '<strong>本次错题</strong>',
-      '</article>',
+      '<article class="list-item"><strong>本次错题</strong></article>',
       wrongItems.map(function (item, idx) {
         return [
           '<article class="list-item">',
@@ -115,26 +111,6 @@
       }).join("")
     ].join("");
   }
-
-  function renderWrongBook() {
-    var wrongBook = state && Array.isArray(state.wrongBook) ? state.wrongBook : [];
-    refs.wrongbookCard.hidden = false;
-    if (!wrongBook.length) {
-      refs.wrongbookList.innerHTML = '<div class="empty">错题本为空，继续保持。</div>';
-      return;
-    }
-    refs.wrongbookList.innerHTML = wrongBook.slice(0, 80).map(function (item, idx) {
-      return [
-        '<article class="list-item">',
-        '<div><strong>' + (idx + 1) + ". " + DLA.escapeHtml(item.prompt || "") + "</strong></div>",
-        '<p class="muted">正确答案：' + DLA.escapeHtml(item.correctAnswer || "--") + "</p>",
-        '<p class="muted">最近错题时间：' + DLA.escapeHtml(DLA.formatDateTime(item.lastWrongAt)) + " / 错误次数：" + DLA.escapeHtml(String(item.wrongCount || 1)) + "</p>",
-        item.hint ? '<p class="muted">提示：' + DLA.escapeHtml(item.hint) + "</p>" : "",
-        "</article>"
-      ].join("");
-    }).join("");
-  }
-
   function renderPet() {
     var pet = state && state.pet ? state.pet : null;
     if (!pet) return;
@@ -160,15 +136,18 @@
     refs.todayContent.hidden = false;
     refs.todayItemsCard.hidden = false;
     DLA.fillEmailLinks(email);
+
     refs.streak.textContent = String(DLA.safeGet(state, ["stats", "streak"], 0)) + " 天";
     refs.completionRate.textContent = String(DLA.safeGet(state, ["stats", "completionRate"], 0)) + "%";
     refs.nextReminder.textContent = DLA.safeGet(state, ["profile", "sendTime"], "--:--");
+    refs.eveningReminder.textContent = DLA.safeGet(state, ["profile", "reviewTime"], "--:--");
     refs.doneFlag.textContent = session && session.completedAt ? "已完成" : "未完成";
+
     renderItems(session);
     renderQuiz(session);
     renderQuizWrong(session);
-    renderWrongBook();
     renderPet();
+
     refs.completeBtn.disabled = !isCurrent;
     refs.sendMorningBtn.disabled = !state || !state.profile;
     refs.sendEveningBtn.disabled = !isCurrent;

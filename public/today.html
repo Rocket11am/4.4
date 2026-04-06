@@ -39,7 +39,11 @@
           <div class="stat-item"><span>连续学习</span><b id="streak">0 天</b></div>
           <div class="stat-item"><span>今日完成</span><b id="done-flag">未完成</b></div>
           <div class="stat-item"><span>完成率</span><b id="completion-rate">0%</b></div>
-          <div class="stat-item"><span>下次提醒</span><b id="next-reminder">--:--</b></div>
+          <div class="stat-item">
+            <span>下次提醒</span>
+            <b id="next-reminder">--:--</b>
+            <div class="tiny">晚间推送：<span id="evening-reminder">--:--</span></div>
+          </div>
         </div>
         <div class="today-actions" style="margin-top:12px;">
           <button id="complete-btn" class="btn"><span>完成今日学习</span></button>
@@ -82,11 +86,6 @@
         <form id="quiz-form" class="list"></form>
         <div id="quiz-wrong" class="list" style="margin-top:12px;"></div>
       </article>
-    </section>
-
-    <section class="card" id="wrongbook-card" hidden>
-      <h2 class="section-title">错题本</h2>
-      <div id="wrongbook-list" class="list"></div>
     </section>
 
     <section id="today-items-card" class="card" hidden>

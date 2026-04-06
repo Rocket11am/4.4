@@ -48,7 +48,18 @@
         <div id="timeline" class="timeline"></div>
       </article>
 
-      <section class="history-shell">
+      <section class="card history-panel-card" style="margin-bottom:12px;">
+        <div class="panel-switch" role="tablist" aria-label="record panels">
+          <button id="history-tab-records" class="btn btn-alt is-active" type="button" role="tab" aria-selected="true" aria-controls="history-records-panel">
+            <span>历史记录</span>
+          </button>
+          <button id="history-tab-wrongbook" class="btn btn-alt" type="button" role="tab" aria-selected="false" aria-controls="history-wrongbook-panel">
+            <span>错题本</span>
+          </button>
+        </div>
+      </section>
+
+      <section id="history-records-panel" class="history-shell" role="tabpanel" aria-labelledby="history-tab-records">
         <article class="card">
           <h2 class="section-title">历史列表</h2>
           <div id="session-list" class="list"></div>
@@ -57,6 +68,11 @@
           <h2 class="section-title">记录详情</h2>
           <div id="session-detail" class="list"></div>
         </article>
+      </section>
+
+      <section id="history-wrongbook-panel" class="card" role="tabpanel" aria-labelledby="history-tab-wrongbook" hidden>
+        <h2 class="section-title">错题本</h2>
+        <div id="wrongbook-list" class="list"></div>
       </section>
     </section>
   </main>

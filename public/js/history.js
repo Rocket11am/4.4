@@ -8,11 +8,17 @@
     statAccuracy: document.getElementById("stat-accuracy"),
     timeline: document.getElementById("timeline"),
     sessionList: document.getElementById("session-list"),
-    sessionDetail: document.getElementById("session-detail")
+    sessionDetail: document.getElementById("session-detail"),
+    wrongbookList: document.getElementById("wrongbook-list"),
+    recordsTab: document.getElementById("history-tab-records"),
+    wrongbookTab: document.getElementById("history-tab-wrongbook"),
+    recordsPanel: document.getElementById("history-records-panel"),
+    wrongbookPanel: document.getElementById("history-wrongbook-panel")
   };
 
   var email = "";
   var state = null;
+  var activeTab = "records";
 
   function buildCalendarDays() {
     var today = new Date();
@@ -23,20 +29,31 @@
     var daysInMonth = new Date(year, month + 1, 0).getDate();
     var sessions = state && Array.isArray(state.history) ? state.history : [];
     var quizDoneMap = {};
+
     sessions.forEach(function (session) {
       if (!session || !session.date) return;
-      if (session.quizResult && session.quizResult.submittedAt) quizDoneMap[session.date] = true;
+      if (session.quizResult && session.quizResult.submittedAt) {
+        quizDoneMap[session.date] = true;
+      }
     });
 
     var cells = [];
     var offset;
-    for (offset = 0; offset < startWeekday; offset += 1) cells.push({ day: "", muted: true, checked: false });
+    for (offset = 0; offset < startWeekday; offset += 1) {
+      cells.push({ day: "", muted: true, checked: false });
+    }
     var day;
     for (day = 1; day <= daysInMonth; day += 1) {
-      var dateKey = [year, String(month + 1).padStart(2, "0"), String(day).padStart(2, "0")].join("-");
+      var dateKey = [
+        year,
+        String(month + 1).padStart(2, "0"),
+        String(day).padStart(2, "0")
+      ].join("-");
       cells.push({ day: day, muted: false, checked: Boolean(quizDoneMap[dateKey]) });
     }
-    while (cells.length % 7 !== 0) cells.push({ day: "", muted: true, checked: false });
+    while (cells.length % 7 !== 0) {
+      cells.push({ day: "", muted: true, checked: false });
+    }
     return cells;
   }
 
@@ -45,7 +62,9 @@
     var cells = buildCalendarDays();
     refs.timeline.innerHTML = [
       '<div class="calendar-grid">',
-      weekdayLabels.map(function (label) { return '<div class="calendar-head">' + label + "</div>"; }).join(""),
+      weekdayLabels.map(function (label) {
+        return '<div class="calendar-head">' + label + "</div>";
+      }).join(""),
       cells.map(function (cell) {
         return [
           '<div class="calendar-cell ' + (cell.muted ? "is-muted" : "") + " " + (cell.checked ? "is-done" : "") + '">',
@@ -62,7 +81,7 @@
     return "/today?email=" + encodeURIComponent(email) + "&date=" + encodeURIComponent(session.date || "");
   }
 
-  function renderList() {
+  function renderRecords() {
     var list = state && Array.isArray(state.history) ? state.history : [];
     if (!list.length) {
       refs.sessionList.innerHTML = '<div class="empty">暂无历史记录。</div>';
@@ -103,21 +122,74 @@
     ].join("");
   }
 
+  function renderWrongbook() {
+    var wrongBook = state && Array.isArray(state.wrongBook) ? state.wrongBook : [];
+    if (!wrongBook.length) {
+      refs.wrongbookList.innerHTML = '<div class="empty">暂无错题，继续保持。</div>';
+      return;
+    }
+
+    refs.wrongbookList.innerHTML = wrongBook.map(function (item, index) {
+      var dateText = item.lastWrongAt ? DLA.formatDateTime(item.lastWrongAt) : "--";
+      return [
+        '<article class="list-item">',
+        "<strong>" + (index + 1) + ". " + DLA.escapeHtml(item.prompt || "") + "</strong>",
+        '<p class="muted">正确答案：' + DLA.escapeHtml(item.correctAnswer || "--") + "</p>",
+        '<p class="muted">最近错误答案：' + DLA.escapeHtml(item.lastAnswer || "--") + "</p>",
+        '<p class="muted">错误次数：' + DLA.escapeHtml(String(item.wrongCount || 1)) + "</p>",
+        '<p class="tiny">最近出错时间：' + DLA.escapeHtml(dateText) + "</p>",
+        item.hint ? ('<p class="muted">提示：' + DLA.escapeHtml(item.hint) + "</p>") : "",
+        item.sessionDate ? ('<p><a class="btn btn-alt" href="/today?email=' + encodeURIComponent(email) + '&date=' + encodeURIComponent(item.sessionDate) + '"><span>回看该日内容</span></a></p>') : "",
+        "</article>"
+      ].join("");
+    }).join("");
+  }
+
+  function setActiveTab(tab) {
+    activeTab = tab === "wrongbook" ? "wrongbook" : "records";
+    var isRecords = activeTab === "records";
+
+    if (refs.recordsPanel) refs.recordsPanel.hidden = !isRecords;
+    if (refs.wrongbookPanel) refs.wrongbookPanel.hidden = isRecords;
+
+    if (refs.recordsTab) {
+      refs.recordsTab.classList.toggle("is-active", isRecords);
+      refs.recordsTab.setAttribute("aria-selected", isRecords ? "true" : "false");
+    }
+    if (refs.wrongbookTab) {
+      refs.wrongbookTab.classList.toggle("is-active", !isRecords);
+      refs.wrongbookTab.setAttribute("aria-selected", isRecords ? "false" : "true");
+    }
+  }
+
   function render() {
     refs.historyEmpty.hidden = true;
     refs.historyContent.hidden = false;
     DLA.fillEmailLinks(email);
+
     refs.statStreak.textContent = String(DLA.safeGet(state, ["stats", "streak"], 0));
     refs.statDays.textContent = String(DLA.safeGet(state, ["stats", "activeDays"], 0));
     refs.statCompletion.textContent = String(DLA.safeGet(state, ["stats", "completionRate"], 0)) + "%";
     refs.statAccuracy.textContent = String(DLA.safeGet(state, ["stats", "accuracy"], 0)) + "%";
+
     renderTimeline();
-    renderList();
+    renderRecords();
+    renderWrongbook();
+    setActiveTab(activeTab);
   }
 
   function showEmpty() {
     refs.historyEmpty.hidden = false;
     refs.historyContent.hidden = true;
+  }
+
+  function bind() {
+    if (refs.recordsTab) {
+      refs.recordsTab.addEventListener("click", function () { setActiveTab("records"); });
+    }
+    if (refs.wrongbookTab) {
+      refs.wrongbookTab.addEventListener("click", function () { setActiveTab("wrongbook"); });
+    }
   }
 
   async function loadStateWithRestore() {
@@ -138,11 +210,13 @@
   }
 
   async function init() {
+    bind();
     email = DLA.getEmailFromUrlOrStorage();
     if (!email) {
       showEmpty();
       return;
     }
+
     DLA.rememberEmail(email);
     try {
       await loadStateWithRestore();
