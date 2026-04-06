@@ -29,9 +29,7 @@
         DLA.showToast("至少保留一个学习类型");
         return;
       }
-      selectedTypes = selectedTypes.filter(function (item) {
-        return item !== type;
-      });
+      selectedTypes = selectedTypes.filter(function (item) { return item !== type; });
     } else {
       selectedTypes.push(type);
     }
@@ -83,9 +81,7 @@
     try {
       var response = await DLA.fetchJson("/api/profile", { method: "POST", body: payload });
       DLA.rememberEmail(email);
-      if (response && response.profile) {
-        DLA.cacheState(email, response);
-      }
+      if (response && response.profile) DLA.cacheState(email, response);
       window.location.href = "/today?email=" + encodeURIComponent(email);
     } catch (error) {
       DLA.showToast(error.message || "保存失败");
@@ -104,22 +100,31 @@
 
     var email = DLA.getEmailFromUrlOrStorage();
     if (!email) return;
-
     DLA.rememberEmail(email);
+
     try {
-      var state = await DLA.fetchJson("/api/state?email=" + encodeURIComponent(email));
-      if (state && state.profile) {
-        DLA.cacheState(email, state);
-        fillForm(state.profile);
-        DLA.fillEmailLinks(state.profile.email);
+      var remote = await DLA.fetchJson("/api/state?email=" + encodeURIComponent(email));
+      if (remote && remote.profile) {
+        DLA.cacheState(email, remote);
+        fillForm(remote.profile);
+        DLA.fillEmailLinks(remote.profile.email);
         return;
       }
+
+      var cached = DLA.loadCachedState(email);
+      if (cached && cached.profile) {
+        var restored = await DLA.restoreState(email, cached);
+        var finalState = restored && restored.profile ? restored : cached;
+        DLA.cacheState(email, finalState);
+        fillForm(finalState.profile);
+        DLA.fillEmailLinks(finalState.profile.email);
+      }
     } catch (error) {
-      var cachedState = DLA.loadCachedState(email);
-      if (cachedState && cachedState.profile) {
-        fillForm(cachedState.profile);
-        DLA.fillEmailLinks(cachedState.profile.email);
-        DLA.showToast("当前读取的是本机缓存设置。");
+      var backup = DLA.loadCachedState(email);
+      if (backup && backup.profile) {
+        fillForm(backup.profile);
+        DLA.fillEmailLinks(backup.profile.email);
+        DLA.showToast("当前使用本机缓存设置，已尝试自动恢复。");
         return;
       }
       DLA.showToast(error.message || "加载失败，可直接手动填写设置");

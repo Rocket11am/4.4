@@ -89,6 +89,27 @@
     return data;
   }
 
+  async function restoreState(email, cachedState) {
+    var clean = normalizeEmail(email);
+    if (!clean || !cachedState) return null;
+    try {
+      var restored = await fetchJson("/api/restore-state", {
+        method: "POST",
+        body: {
+          email: clean,
+          profile: cachedState.profile || null,
+          history: Array.isArray(cachedState.history) ? cachedState.history : [],
+          pet: cachedState.pet || null
+        }
+      });
+      if (restored && restored.profile) {
+        cacheState(clean, restored);
+        return restored;
+      }
+    } catch (e) {}
+    return null;
+  }
+
   function labelForType(type) {
     return {
       spoken: "地道口语表达",
@@ -178,6 +199,7 @@
     cacheState: cacheState,
     loadCachedState: loadCachedState,
     fetchJson: fetchJson,
+    restoreState: restoreState,
     labelForType: labelForType,
     formatDateTime: formatDateTime,
     formatDate: formatDate,

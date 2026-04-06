@@ -25,35 +25,18 @@
     var quizDoneMap = {};
     sessions.forEach(function (session) {
       if (!session || !session.date) return;
-      if (session.quizResult && session.quizResult.submittedAt) {
-        quizDoneMap[session.date] = true;
-      }
+      if (session.quizResult && session.quizResult.submittedAt) quizDoneMap[session.date] = true;
     });
 
     var cells = [];
     var offset;
-    for (offset = 0; offset < startWeekday; offset += 1) {
-      cells.push({ day: "", muted: true, checked: false });
-    }
-
+    for (offset = 0; offset < startWeekday; offset += 1) cells.push({ day: "", muted: true, checked: false });
     var day;
     for (day = 1; day <= daysInMonth; day += 1) {
-      var dateKey = [
-        year,
-        String(month + 1).padStart(2, "0"),
-        String(day).padStart(2, "0")
-      ].join("-");
-      cells.push({
-        day: day,
-        muted: false,
-        checked: Boolean(quizDoneMap[dateKey])
-      });
+      var dateKey = [year, String(month + 1).padStart(2, "0"), String(day).padStart(2, "0")].join("-");
+      cells.push({ day: day, muted: false, checked: Boolean(quizDoneMap[dateKey]) });
     }
-
-    while (cells.length % 7 !== 0) {
-      cells.push({ day: "", muted: true, checked: false });
-    }
-
+    while (cells.length % 7 !== 0) cells.push({ day: "", muted: true, checked: false });
     return cells;
   }
 
@@ -62,9 +45,7 @@
     var cells = buildCalendarDays();
     refs.timeline.innerHTML = [
       '<div class="calendar-grid">',
-      weekdayLabels.map(function (label) {
-        return '<div class="calendar-head">' + label + "</div>";
-      }).join(""),
+      weekdayLabels.map(function (label) { return '<div class="calendar-head">' + label + "</div>"; }).join(""),
       cells.map(function (cell) {
         return [
           '<div class="calendar-cell ' + (cell.muted ? "is-muted" : "") + " " + (cell.checked ? "is-done" : "") + '">',
@@ -126,12 +107,10 @@
     refs.historyEmpty.hidden = true;
     refs.historyContent.hidden = false;
     DLA.fillEmailLinks(email);
-
     refs.statStreak.textContent = String(DLA.safeGet(state, ["stats", "streak"], 0));
     refs.statDays.textContent = String(DLA.safeGet(state, ["stats", "activeDays"], 0));
     refs.statCompletion.textContent = String(DLA.safeGet(state, ["stats", "completionRate"], 0)) + "%";
     refs.statAccuracy.textContent = String(DLA.safeGet(state, ["stats", "accuracy"], 0)) + "%";
-
     renderTimeline();
     renderList();
   }
@@ -139,6 +118,23 @@
   function showEmpty() {
     refs.historyEmpty.hidden = false;
     refs.historyContent.hidden = true;
+  }
+
+  async function loadStateWithRestore() {
+    var remote = await DLA.fetchJson("/api/state?email=" + encodeURIComponent(email));
+    if (remote && remote.profile) {
+      state = remote;
+      DLA.cacheState(email, state);
+      return;
+    }
+    var cached = DLA.loadCachedState(email);
+    if (cached && cached.profile) {
+      var restored = await DLA.restoreState(email, cached);
+      state = restored && restored.profile ? restored : cached;
+      DLA.cacheState(email, state);
+      return;
+    }
+    state = remote;
   }
 
   async function init() {
@@ -149,12 +145,7 @@
     }
     DLA.rememberEmail(email);
     try {
-      state = await DLA.fetchJson("/api/state?email=" + encodeURIComponent(email));
-      if (state && state.profile) {
-        DLA.cacheState(email, state);
-      } else {
-        state = DLA.loadCachedState(email);
-      }
+      await loadStateWithRestore();
       if (!state || !state.profile) {
         showEmpty();
         return;
@@ -163,8 +154,11 @@
     } catch (error) {
       state = DLA.loadCachedState(email);
       if (state && state.profile) {
+        var restored = await DLA.restoreState(email, state);
+        if (restored && restored.profile) state = restored;
+        DLA.cacheState(email, state);
         render();
-        DLA.showToast("当前读取的是本机缓存记录。");
+        DLA.showToast("当前使用本机缓存记录，已尝试自动恢复。");
         return;
       }
       DLA.showToast(error.message || "加载失败");

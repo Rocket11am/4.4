@@ -78,63 +78,192 @@
   position: relative;
   min-height: 220px;
   border: 2px solid var(--cyan);
-  background: linear-gradient(180deg, rgba(10, 6, 24, 0.9), rgba(26, 16, 60, 0.82));
+  background: linear-gradient(180deg, #f5d9b8 0%, #f1cda2 55%, #eebd8a 100%);
   overflow: hidden;
+  image-rendering: pixelated;
 }
 
-.pet-core {
+.pet-sky {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.18) 0px,
+    rgba(255, 255, 255, 0.18) 1px,
+    rgba(255, 255, 255, 0) 1px,
+    rgba(255, 255, 255, 0) 4px
+  );
+}
+
+.pet-character {
   position: absolute;
   left: 50%;
-  top: 50%;
-  width: 110px;
-  height: 110px;
-  transform: translate(-50%, -50%);
-  border-radius: 42% 58% 55% 45%;
-  background: radial-gradient(circle at 30% 30%, #00ffff, #ff00ff 65%, #120428 100%);
-  box-shadow: 0 0 30px rgba(0, 255, 255, 0.45), 0 0 60px rgba(255, 0, 255, 0.22);
+  bottom: 16px;
+  width: 98px;
+  height: 130px;
+  transform: translateX(-50%);
 }
 
-.pet-ring {
+.pet-ear {
   position: absolute;
-  inset: 28px;
-  border: 1px solid rgba(0, 255, 255, 0.35);
-  transform: skewX(-10deg);
+  top: 0;
+  width: 24px;
+  height: 24px;
+  border: 4px solid #1267b8;
+  background: #7ceee3;
+  box-shadow: inset 0 0 0 5px #ff5cb0;
 }
 
-.pet-face {
+.pet-ear-left {
+  left: 10px;
+}
+
+.pet-ear-right {
+  right: 10px;
+}
+
+.pet-head {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  font-family: "Orbitron", "Microsoft YaHei", sans-serif;
-  font-size: 28px;
-  color: #fff;
-  text-shadow: 0 0 18px rgba(255, 255, 255, 0.5);
+  left: 17px;
+  top: 14px;
+  width: 64px;
+  height: 62px;
+  border: 4px solid #1267b8;
+  background: #7ef2e7;
+  box-shadow: inset 0 0 0 4px #5fdad1;
 }
 
-.pet-stage-seed .pet-core {
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
+.pet-eye {
+  position: absolute;
+  top: 18px;
+  width: 10px;
+  height: 14px;
+  background: #111;
 }
 
-.pet-stage-spark .pet-core {
-  width: 110px;
-  height: 110px;
-  border-radius: 38% 62% 54% 46%;
+.pet-eye::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 4px;
+  height: 4px;
+  background: #fff;
 }
 
-.pet-stage-nova .pet-core {
+.pet-eye-left {
+  left: 14px;
+}
+
+.pet-eye-right {
+  right: 14px;
+}
+
+.pet-mouth {
+  position: absolute;
+  left: 28px;
+  bottom: 12px;
+  width: 8px;
+  height: 4px;
+  border-bottom: 3px solid #0e4f80;
+}
+
+.pet-suit {
+  position: absolute;
+  left: 13px;
+  top: 70px;
+  width: 72px;
+  height: 52px;
+  border: 4px solid #1267b8;
+  background: #29c7de;
+  box-shadow: inset 0 0 0 4px #f4d52a;
+}
+
+.pet-controller {
+  position: absolute;
+  left: 30px;
+  top: 92px;
+  width: 36px;
+  height: 16px;
+  border: 3px solid #1267b8;
+  background: #1fb4cb;
+}
+
+.pet-tail {
+  position: absolute;
+  right: -6px;
+  top: 82px;
+  width: 18px;
+  height: 18px;
+  border: 4px solid #1267b8;
+  background: #f4d52a;
+}
+
+.pet-stage-seed .pet-character {
+  width: 84px;
+  height: 112px;
+}
+
+.pet-stage-seed .pet-head {
+  left: 16px;
+  top: 16px;
+  width: 50px;
+  height: 46px;
+}
+
+.pet-stage-seed .pet-suit,
+.pet-stage-seed .pet-controller {
+  display: none;
+}
+
+.pet-stage-seed .pet-tail {
+  right: -2px;
+  top: 70px;
+  width: 14px;
+  height: 14px;
+}
+
+.pet-stage-spark .pet-character {
+  width: 100px;
+  height: 132px;
+}
+
+.pet-stage-legend .pet-character {
   width: 126px;
-  height: 126px;
-  border-radius: 30% 70% 48% 52%;
+  height: 164px;
 }
 
-.pet-stage-legend .pet-core {
-  width: 140px;
-  height: 140px;
-  border-radius: 24% 76% 36% 64%;
-  box-shadow: 0 0 36px rgba(0, 255, 255, 0.5), 0 0 80px rgba(255, 0, 255, 0.3);
+.pet-stage-legend .pet-ear {
+  width: 28px;
+  height: 28px;
+}
+
+.pet-stage-legend .pet-head {
+  left: 22px;
+  top: 14px;
+  width: 82px;
+  height: 78px;
+}
+
+.pet-stage-legend .pet-suit {
+  left: 19px;
+  top: 88px;
+  width: 88px;
+  height: 60px;
+}
+
+.pet-stage-legend .pet-controller {
+  left: 43px;
+  top: 112px;
+  width: 44px;
+  height: 18px;
+}
+
+.pet-stage-legend .pet-tail {
+  right: -10px;
+  top: 104px;
+  width: 22px;
+  height: 22px;
 }
 
 .pet-meta {

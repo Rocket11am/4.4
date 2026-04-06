@@ -126,6 +126,12 @@ async function handleApi(req, res, url) {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/restore-state") {
+    const body = await readBody(req);
+    respondJson(res, 200, restoreUserState(body));
+    return;
+  }
+
   if (req.method === "POST" && url.pathname === "/api/send/morning") {
     const body = await readBody(req);
     respondJson(res, 200, await sendMorningLesson(body.email, "manual"));
@@ -272,9 +278,8 @@ function buildPetState(user, sessions, stats) {
 }
 
 function getPetStage(age) {
-  if (age >= 7) return { id: "legend", label: "霓虹守护兽" };
-  if (age >= 5) return { id: "nova", label: "星轨巡航兽" };
-  if (age >= 3) return { id: "spark", label: "电光探索兽" };
+  if (age >= 7) return { id: "legend", label: "机甲成长体" };
+  if (age >= 3) return { id: "spark", label: "机甲进阶体" };
   return { id: "seed", label: "像素幼宠" };
 }
 
@@ -404,6 +409,67 @@ function upsertUser(input) {
 function getUser(email) {
   const cleanEmail = normalizeEmail(email).toLowerCase();
   return cleanEmail ? store.users[cleanEmail] || null : null;
+}
+
+function restoreUserState(payload) {
+  const email = normalizeEmail(payload?.email);
+  if (!email) {
+    return { ok: false, message: "缺少邮箱，无法恢复记录。" };
+  }
+
+  const cached = payload && typeof payload === "object" ? payload : {};
+  const profile = cached.profile && typeof cached.profile === "object" ? cached.profile : {};
+  const history = Array.isArray(cached.history) ? cached.history : [];
+
+  const user = upsertUser({
+    email,
+    dailyCount: profile.dailyCount,
+    learningTypes: profile.learningTypes,
+    customTopic: profile.customTopic,
+    petName: profile.petName,
+    sendTime: profile.sendTime,
+    reviewEnabled: profile.reviewEnabled,
+    reviewTime: profile.reviewTime,
+    backupChannel: profile.backupChannel,
+    backupContact: profile.backupContact
+  });
+
+  const existing = Array.isArray(user.sessions) ? user.sessions : [];
+  const mergedMap = new Map();
+
+  existing.forEach((session) => {
+    const normalized = normalizeSession(session);
+    const key = normalized.id || `${normalized.date}-${normalized.createdAt}`;
+    mergedMap.set(key, normalized);
+  });
+
+  history.forEach((session) => {
+    const normalized = normalizeSession(session);
+    const key = normalized.id || `${normalized.date}-${normalized.createdAt}`;
+    const prev = mergedMap.get(key);
+    if (!prev) {
+      mergedMap.set(key, normalized);
+      return;
+    }
+    const prevTime = new Date(prev.createdAt || 0).getTime();
+    const nextTime = new Date(normalized.createdAt || 0).getTime();
+    if (nextTime >= prevTime) mergedMap.set(key, normalized);
+  });
+
+  user.sessions = sortSessions(Array.from(mergedMap.values())).map(normalizeSession);
+  if (cached.pet && typeof cached.pet === "object") {
+    user.pet = normalizePet({
+      ...user.pet,
+      name: cached.pet.name || profile.petName,
+      age: Math.max(Number(user?.pet?.age || 1), Number(cached.pet.age || 1))
+    });
+  } else {
+    user.pet = normalizePet({ ...user.pet, name: profile.petName });
+  }
+
+  saveStore();
+  appendLog(`${email} 从本机缓存恢复了学习记录`);
+  return buildClientState(email);
 }
 
 async function sendMorningLesson(email, mode) {
