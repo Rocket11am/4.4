@@ -1247,15 +1247,20 @@ function buildMimeMessage(options) {
   ].join("\r\n");
 }
 
+function sortItemsForDelivery(items, learningTypes) {
+  const list = Array.isArray(items) ? items.slice() : [];
+  const typeOrder = normalizeLearningTypes(learningTypes);
+  const orderMap = new Map(typeOrder.map((type, idx) => [type, idx]));
+  return list.sort((a, b) => {
+    const aIdx = orderMap.has(a.type) ? orderMap.get(a.type) : 999;
+    const bIdx = orderMap.has(b.type) ? orderMap.get(b.type) : 999;
+    if (aIdx !== bIdx) return aIdx - bIdx;
+    return String(a.headline || "").localeCompare(String(b.headline || ""));
+  });
+}
+
 function renderMorningEmail(session, email) {
   const baseUrl = getBaseUrl();
-  const completeUrl = buildTrackedLink(baseUrl, {
-    email,
-    sessionId: session.id,
-    slot: "morning",
-    action: "complete",
-    redirect: `/today?email=${encodeURIComponent(email)}`
-  });
   const dashboardUrl = buildTrackedLink(baseUrl, {
     email,
     sessionId: session.id,
@@ -1264,14 +1269,15 @@ function renderMorningEmail(session, email) {
     redirect: `/today?email=${encodeURIComponent(email)}`
   });
   const pixelUrl = `${baseUrl}/api/email-open?email=${encodeURIComponent(email)}&sessionId=${encodeURIComponent(session.id)}&slot=morning`;
+  const orderedItems = sortItemsForDelivery(session.items, session.learningTypes);
 
-  const itemsHtml = session.items
+  const itemsHtml = orderedItems
     .map(
       (item, index) => `
-        <div style="margin-bottom:16px;padding:16px;border-radius:20px;background:#ffffff;border:3px solid ${TYPE_META[item.type]?.accent || "#FF3AF2"};">
-          <div style="font-weight:800;font-size:18px;margin-bottom:8px;">${index + 1}. ${escapeHtml(item.headline)}</div>
-          <div style="font-size:13px;font-weight:700;color:#6b21a8;margin-bottom:8px;">${escapeHtml(labelForType(item.type))}</div>
-          <div style="color:#111827;line-height:1.7;">${escapeHtml(itemToEmailSummary(item))}</div>
+        <div style="margin-bottom:10px;padding:10px 12px;border-radius:18px;background:#ffffff;border:3px solid ${TYPE_META[item.type]?.accent || "#FF3AF2"};">
+          <div style="font-size:12px;font-weight:700;color:#6b21a8;line-height:1.3;margin:0 0 4px;">${escapeHtml(labelForType(item.type))}</div>
+          <div style="font-weight:800;font-size:17px;line-height:1.35;margin:0 0 4px;">${index + 1}. ${escapeHtml(item.headline)}</div>
+          <div style="color:#111827;line-height:1.55;margin:0;">${escapeHtml(itemToEmailSummary(item))}</div>
         </div>
       `
     )
@@ -1282,13 +1288,11 @@ function renderMorningEmail(session, email) {
       <div style="max-width:720px;margin:0 auto;background:#1d1038;border:4px solid #FFE600;border-radius:28px;padding:28px;box-shadow:12px 12px 0 #00F5D4;">
         <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#00F5D4;">Daily Learning Assistant</div>
         <h1 style="margin:10px 0 8px;font-size:32px;line-height:1.1;">今天的学习内容到了</h1>
-        <p style="margin:0 0 20px;color:#ddd6fe;">今天共生成 ${session.items.length} 条内容，难度等级 Level ${session.difficultyLevel}。</p>
+        <p style="margin:0 0 12px;color:#ddd6fe;">今天共生成 ${orderedItems.length} 条内容，难度等级 Level ${session.difficultyLevel}。</p>
         ${itemsHtml}
-        <div style="margin-top:24px;">
-          <a href="${completeUrl}" style="display:inline-block;margin-right:12px;padding:14px 20px;background:linear-gradient(90deg,#FF3AF2,#7B2FFF,#00F5D4);border:4px solid #FFE600;border-radius:999px;color:#ffffff;font-weight:800;text-decoration:none;">完成今日学习</a>
+        <div style="margin-top:14px;">
           <a href="${dashboardUrl}" style="display:inline-block;padding:14px 20px;background:#24124b;border:4px dashed #00F5D4;border-radius:999px;color:#ffffff;font-weight:800;text-decoration:none;">打开学习面板</a>
         </div>
-        <p style="margin:20px 0 0;color:#c4b5fd;">${session.reviewEligible ? "如果你开启了晚间复盘，系统会在设定时间发送测试。" : "本次内容不包含英语复盘，适合做轻量输入学习。"}</p>
       </div>
       <img src="${pixelUrl}" alt="" width="1" height="1" style="display:block;border:0;opacity:0;">
     </div>
@@ -1296,9 +1300,10 @@ function renderMorningEmail(session, email) {
 }
 
 function renderMorningText(session, email) {
+  const orderedItems = sortItemsForDelivery(session.items, session.learningTypes);
   return [
-    `今日学习内容已生成，共 ${session.items.length} 条，难度 Level ${session.difficultyLevel}。`,
-    ...session.items.map((item, index) => `${index + 1}. [${labelForType(item.type)}] ${itemToTextSummary(item)}`),
+    `今日学习内容已生成，共 ${orderedItems.length} 条，难度 Level ${session.difficultyLevel}。`,
+    ...orderedItems.map((item, index) => `${index + 1}. [${labelForType(item.type)}] ${itemToTextSummary(item)}`),
     "",
     `打开学习面板：${getBaseUrl()}/today?email=${encodeURIComponent(email)}`
   ].join("\n");
