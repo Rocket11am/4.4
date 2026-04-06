@@ -127,15 +127,15 @@
 }
 
 .pet-stage-seed {
-  --pet-scale: 0.94;
+  --pet-scale: 0.31;
 }
 
 .pet-stage-spark {
-  --pet-scale: 1;
+  --pet-scale: 0.33;
 }
 
 .pet-stage-legend {
-  --pet-scale: 1.06;
+  --pet-scale: 0.35;
 }
 
 .pet-meta {
