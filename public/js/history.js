@@ -7,6 +7,7 @@
     statCompletion: document.getElementById("stat-completion"),
     statAccuracy: document.getElementById("stat-accuracy"),
     timeline: document.getElementById("timeline"),
+    accuracyChart: document.getElementById("accuracy-chart"),
     sessionList: document.getElementById("session-list"),
     sessionDetail: document.getElementById("session-detail"),
     wrongbookList: document.getElementById("wrongbook-list"),
@@ -32,9 +33,7 @@
 
     sessions.forEach(function (session) {
       if (!session || !session.date) return;
-      if (session.quizResult && session.quizResult.submittedAt) {
-        quizDoneMap[session.date] = true;
-      }
+      if (session.quizResult && session.quizResult.submittedAt) quizDoneMap[session.date] = true;
     });
 
     var cells = [];
@@ -42,29 +41,23 @@
     for (offset = 0; offset < startWeekday; offset += 1) {
       cells.push({ day: "", muted: true, checked: false });
     }
+
     var day;
     for (day = 1; day <= daysInMonth; day += 1) {
-      var dateKey = [
-        year,
-        String(month + 1).padStart(2, "0"),
-        String(day).padStart(2, "0")
-      ].join("-");
+      var dateKey = [year, String(month + 1).padStart(2, "0"), String(day).padStart(2, "0")].join("-");
       cells.push({ day: day, muted: false, checked: Boolean(quizDoneMap[dateKey]) });
     }
-    while (cells.length % 7 !== 0) {
-      cells.push({ day: "", muted: true, checked: false });
-    }
+
+    while (cells.length % 7 !== 0) cells.push({ day: "", muted: true, checked: false });
     return cells;
   }
 
-  function renderTimeline() {
+  function renderCalendar() {
     var weekdayLabels = ["日", "一", "二", "三", "四", "五", "六"];
     var cells = buildCalendarDays();
     refs.timeline.innerHTML = [
-      '<div class="calendar-grid">',
-      weekdayLabels.map(function (label) {
-        return '<div class="calendar-head">' + label + "</div>";
-      }).join(""),
+      '<div class="calendar-grid compact">',
+      weekdayLabels.map(function (label) { return '<div class="calendar-head">' + label + "</div>"; }).join(""),
       cells.map(function (cell) {
         return [
           '<div class="calendar-cell ' + (cell.muted ? "is-muted" : "") + " " + (cell.checked ? "is-done" : "") + '">',
@@ -74,6 +67,81 @@
         ].join("");
       }).join(""),
       "</div>"
+    ].join("");
+  }
+
+  function last7AccuracyPoints() {
+    var sessions = state && Array.isArray(state.history) ? state.history : [];
+    var map = {};
+    sessions.forEach(function (s) {
+      if (!s || !s.date) return;
+      map[s.date] = s && s.quizResult ? Number(s.quizResult.accuracy || 0) : 0;
+    });
+
+    var points = [];
+    var i;
+    for (i = 6; i >= 0; i -= 1) {
+      var d = new Date();
+      d.setDate(d.getDate() - i);
+      var k = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
+      points.push({
+        key: k,
+        label: String(d.getMonth() + 1).padStart(2, "0") + "/" + String(d.getDate()).padStart(2, "0"),
+        value: map[k] || 0
+      });
+    }
+    return points;
+  }
+
+  function renderAccuracyChart() {
+    var points = last7AccuracyPoints();
+    if (!points.length) {
+      refs.accuracyChart.innerHTML = '<div class="empty">暂无复习正确率数据。</div>';
+      return;
+    }
+
+    var width = 420;
+    var height = 180;
+    var padLeft = 34;
+    var padRight = 14;
+    var padTop = 16;
+    var padBottom = 30;
+    var drawW = width - padLeft - padRight;
+    var drawH = height - padTop - padBottom;
+
+    var poly = points.map(function (p, idx) {
+      var x = padLeft + (idx * drawW / Math.max(1, points.length - 1));
+      var y = padTop + (drawH * (1 - (Math.max(0, Math.min(100, p.value)) / 100)));
+      return x.toFixed(2) + "," + y.toFixed(2);
+    }).join(" ");
+
+    var dots = points.map(function (p, idx) {
+      var x = padLeft + (idx * drawW / Math.max(1, points.length - 1));
+      var y = padTop + (drawH * (1 - (Math.max(0, Math.min(100, p.value)) / 100)));
+      return '<circle cx="' + x.toFixed(2) + '" cy="' + y.toFixed(2) + '" r="3.5"></circle>';
+    }).join("");
+
+    var labels = points.map(function (p, idx) {
+      var x = padLeft + (idx * drawW / Math.max(1, points.length - 1));
+      return '<text x="' + x.toFixed(2) + '" y="' + (height - 10) + '" text-anchor="middle">' + DLA.escapeHtml(p.label) + "</text>";
+    }).join("");
+
+    var rows = [0, 25, 50, 75, 100].map(function (v) {
+      var y = padTop + (drawH * (1 - (v / 100)));
+      return [
+        '<line x1="' + padLeft + '" y1="' + y.toFixed(2) + '" x2="' + (width - padRight) + '" y2="' + y.toFixed(2) + '"></line>',
+        '<text x="' + (padLeft - 6) + '" y="' + (y + 4).toFixed(2) + '" text-anchor="end">' + v + "</text>"
+      ].join("");
+    }).join("");
+
+    refs.accuracyChart.innerHTML = [
+      '<div class="chart-title">复习正确率（最近 7 天）</div>',
+      '<svg viewBox="0 0 ' + width + " " + height + '" class="line-chart" role="img" aria-label="最近7天复习正确率折线图">',
+      '<g class="chart-grid">' + rows + "</g>",
+      '<polyline class="chart-line" points="' + poly + '"></polyline>',
+      '<g class="chart-dots">' + dots + "</g>",
+      '<g class="chart-labels">' + labels + "</g>",
+      "</svg>"
     ].join("");
   }
 
@@ -172,7 +240,8 @@
     refs.statCompletion.textContent = String(DLA.safeGet(state, ["stats", "completionRate"], 0)) + "%";
     refs.statAccuracy.textContent = String(DLA.safeGet(state, ["stats", "accuracy"], 0)) + "%";
 
-    renderTimeline();
+    renderCalendar();
+    renderAccuracyChart();
     renderRecords();
     renderWrongbook();
     setActiveTab(activeTab);
@@ -184,12 +253,8 @@
   }
 
   function bind() {
-    if (refs.recordsTab) {
-      refs.recordsTab.addEventListener("click", function () { setActiveTab("records"); });
-    }
-    if (refs.wrongbookTab) {
-      refs.wrongbookTab.addEventListener("click", function () { setActiveTab("wrongbook"); });
-    }
+    if (refs.recordsTab) refs.recordsTab.addEventListener("click", function () { setActiveTab("records"); });
+    if (refs.wrongbookTab) refs.wrongbookTab.addEventListener("click", function () { setActiveTab("wrongbook"); });
   }
 
   async function loadStateWithRestore() {

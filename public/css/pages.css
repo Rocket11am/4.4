@@ -83,7 +83,7 @@
 }
 
 .today-items-card .list {
-  max-height: 360px;
+  max-height: 220px;
   overflow: auto;
 }
 
@@ -263,9 +263,80 @@
   gap: 12px;
 }
 
+.trend-shell {
+  display: grid;
+  gap: 12px;
+}
+
 .timeline {
   display: grid;
   gap: 8px;
+}
+
+.calendar-grid.compact {
+  gap: 6px;
+}
+
+.calendar-grid.compact .calendar-head {
+  padding: 4px 2px;
+  font-size: 11px;
+}
+
+.calendar-grid.compact .calendar-cell {
+  min-height: 54px;
+  padding: 6px;
+}
+
+.calendar-grid.compact .calendar-day {
+  font-size: 13px;
+}
+
+.calendar-grid.compact .calendar-mark {
+  font-size: 14px;
+  right: 6px;
+  bottom: 5px;
+}
+
+.accuracy-chart {
+  border: 1px solid var(--border);
+  background: var(--card-strong);
+  padding: 10px;
+}
+
+.chart-title {
+  margin-bottom: 8px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.line-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart-grid line {
+  stroke: rgba(0, 255, 255, 0.14);
+  stroke-width: 1;
+}
+
+.chart-grid text,
+.chart-labels text {
+  fill: rgba(224, 224, 224, 0.72);
+  font-size: 10px;
+}
+
+.chart-line {
+  fill: none;
+  stroke: #00ffff;
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 5px rgba(0, 255, 255, 0.5));
+}
+
+.chart-dots circle {
+  fill: #ff00ff;
+  stroke: #00ffff;
+  stroke-width: 1;
 }
 
 .calendar-grid {
@@ -488,6 +559,11 @@
 
   .review-shell {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .trend-shell {
+    grid-template-columns: 0.9fr 1.1fr;
+    align-items: start;
   }
 
   .pet-shell {
