@@ -667,6 +667,8 @@ async function generateDailyContentWithArk(preferences, level, dailyCount) {
 
   const learningTypes = normalizeLearningTypes(preferences.learningTypes);
   const customTopic = String(preferences.customTopic || "").trim();
+  const newsContext = await buildHotNewsContext(learningTypes);
+  const todayLabel = formatDateKey(new Date());
   const requestBody = {
     model: ARK_MODEL,
     temperature: 0.9,
@@ -687,13 +689,17 @@ async function generateDailyContentWithArk(preferences, level, dailyCount) {
           "3) 仅允许类型：spoken, vocabulary, finance, ai_news, custom。",
           `4) 本次类型优先：${learningTypes.join(", ")}。可混合分配但必须覆盖用户选中类型。`,
           `5) 难度等级：${level}（1-3）。spoken 与 vocabulary 难度要偏高、偏真实职场表达。`,
-          "6) finance 与 ai_news 必须是“当日重要资讯风格概述”，每条含清晰摘要和启发。",
+          `6) finance 与 ai_news 必须是“${todayLabel} 当日热点事件概述”，禁止写宽泛概念性内容。`,
+          "7) finance/ai_news 每条必须包含 happenedAt(YYYY-MM-DD)、sourceName、sourceUrl 字段。",
+          "8) finance/ai_news 的 headline 必须能对应到给定新闻线索中的具体事件。",
           `7) 如果类型为 custom，主题是：${customTopic || "用户自定义主题"}`,
-          "8) 字段规则：",
+          newsContext ? `8) 当日新闻线索（优先基于这些线索生成）：\n${newsContext}` : "8) 若新闻线索为空，尽量生成当日可验证事件并给出来源链接。",
+          "9) 字段规则：",
           "- spoken: {type, headline(英文口语), chinese, scene, example, summary, takeaway}",
           "- vocabulary: {type, headline(英文单词/短语), phonetic, chinese, example, summary, takeaway}",
-          "- finance/ai_news/custom: {type, headline, chinese, summary, takeaway, keywords}",
-          "9) 文本自然、具体，不要模板化重复句式。"
+          "- finance/ai_news: {type, headline, chinese, summary, takeaway, keywords, happenedAt, sourceName, sourceUrl}",
+          "- custom: {type, headline, chinese, summary, takeaway, keywords}",
+          "10) 文本自然、具体，不要模板化重复句式。"
         ].join("\n")
       }
     ]
@@ -729,6 +735,79 @@ async function generateDailyContentWithArk(preferences, level, dailyCount) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function buildHotNewsContext(learningTypes) {
+  const contexts = [];
+  if (learningTypes.includes("finance")) {
+    const financeNews = await fetchGoogleNewsRss("财经 OR 股市 OR 美联储 OR 纳斯达克 OR A股", 8);
+    if (financeNews.length) {
+      contexts.push(["[FINANCE]", ...financeNews.map((item, idx) => `${idx + 1}. ${item.title} | ${item.pubDate} | ${item.link}`)].join("\n"));
+    }
+  }
+  if (learningTypes.includes("ai_news")) {
+    const aiNews = await fetchGoogleNewsRss("人工智能 OR 大模型 OR OpenAI OR Anthropic OR Gemini OR AI Agent", 8);
+    if (aiNews.length) {
+      contexts.push(["[AI]", ...aiNews.map((item, idx) => `${idx + 1}. ${item.title} | ${item.pubDate} | ${item.link}`)].join("\n"));
+    }
+  }
+  return contexts.join("\n\n");
+}
+
+async function fetchGoogleNewsRss(query, limit = 8) {
+  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans`;
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "DailyLearningAssistant/1.0" }
+    });
+    if (!response.ok) return [];
+    const xml = await response.text();
+    const itemBlocks = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
+    const parsed = itemBlocks.map((block) => {
+      const title = xmlDecode(matchTag(block, "title"));
+      const link = matchTag(block, "link");
+      const pubDateRaw = matchTag(block, "pubDate");
+      const date = new Date(pubDateRaw);
+      return {
+        title: title.replace(/\s*-\s*Google 新闻$/i, "").trim(),
+        link: link.trim(),
+        pubDate: Number.isNaN(date.getTime()) ? formatDateKey(new Date()) : formatDateKey(date)
+      };
+    }).filter((item) => item.title && item.link);
+
+    return dedupeNews(parsed).slice(0, limit);
+  } catch (error) {
+    appendLog(`抓取新闻线索失败: ${error.message}`);
+    return [];
+  }
+}
+
+function dedupeNews(items) {
+  const seen = new Set();
+  const result = [];
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const key = normalizeLoose(item.title);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    result.push(item);
+  });
+  return result;
+}
+
+function matchTag(xml, tag) {
+  const reg = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, "i");
+  const matched = String(xml || "").match(reg);
+  return matched && matched[1] ? matched[1] : "";
+}
+
+function xmlDecode(value) {
+  return String(value || "")
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'");
 }
 
 function safeParseJsonObject(text) {
@@ -812,6 +891,9 @@ function buildSyntheticItem(type, topic, level, serial) {
       chinese: "关键宏观数据公布后，市场风险偏好出现切换",
       summary: "当日关注重点是资金在防御和成长板块之间的轮动方向。",
       takeaway: "先看数据是否超预期，再看成交量与板块扩散。",
+      happenedAt: formatDateKey(new Date()),
+      sourceName: "市场公开资讯聚合",
+      sourceUrl: "",
       keywords: ["宏观数据", "风险偏好"]
     });
   }
@@ -824,6 +906,9 @@ function buildSyntheticItem(type, topic, level, serial) {
       chinese: "模型效率优化成为新一轮竞争焦点",
       summary: "业界继续围绕推理成本、响应延迟和稳定性展开工程优化。",
       takeaway: "评估方案时同时比较质量、成本和延迟三项指标。",
+      happenedAt: formatDateKey(new Date()),
+      sourceName: "AI 行业公开资讯聚合",
+      sourceUrl: "",
       keywords: ["模型效率", "推理优化"]
     });
   }
@@ -1357,7 +1442,10 @@ function normalizeContentItem(item) {
     summary: String(item?.summary || ""),
     takeaway: String(item?.takeaway || ""),
     keywords: Array.isArray(item?.keywords) ? item.keywords.map((value) => String(value)) : [],
-    source: String(item?.source || "database")
+    source: String(item?.source || "database"),
+    happenedAt: String(item?.happenedAt || ""),
+    sourceName: String(item?.sourceName || ""),
+    sourceUrl: String(item?.sourceUrl || "")
   };
 }
 
@@ -1474,7 +1562,12 @@ function itemToEmailSummary(item) {
     return `${item.chinese}｜场景：${item.scene}｜例句：${item.example}`;
   }
   if (item.type === "finance") {
-    return `${item.chinese}｜摘要：${item.summary}｜启发：${item.takeaway}`;
+    const sourcePart = [item.happenedAt, item.sourceName].filter(Boolean).join(" · ");
+    return `${item.chinese}｜摘要：${item.summary}｜启发：${item.takeaway}${sourcePart ? `｜来源：${sourcePart}` : ""}`;
+  }
+  if (item.type === "ai_news") {
+    const sourcePart = [item.happenedAt, item.sourceName].filter(Boolean).join(" · ");
+    return `${item.chinese || item.headline}｜摘要：${item.summary}｜启发：${item.takeaway}${sourcePart ? `｜来源：${sourcePart}` : ""}`;
   }
   return `${item.summary}｜启发：${item.takeaway}`;
 }
@@ -1487,7 +1580,10 @@ function itemToTextSummary(item) {
     return `${item.headline} | ${item.chinese} | ${item.scene}`;
   }
   if (item.type === "finance") {
-    return `${item.headline} | ${item.chinese} | ${item.summary}`;
+    return `${item.headline} | ${item.chinese} | ${item.summary} | ${item.happenedAt || ""} ${item.sourceName || ""}`.trim();
+  }
+  if (item.type === "ai_news") {
+    return `${item.headline} | ${item.chinese || ""} | ${item.summary} | ${item.happenedAt || ""} ${item.sourceName || ""}`.trim();
   }
   return `${item.headline} | ${item.summary}`;
 }
