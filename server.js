@@ -219,6 +219,7 @@ function buildClientState(email) {
       : null,
     stats,
     pet,
+    wrongBook: user ? normalizeWrongBook(user.wrongBook).slice(0, 200) : [],
     activeSession,
     history: sessions,
     timeline: buildTimeline(sessions),
@@ -394,12 +395,20 @@ function upsertUser(input) {
     email
   });
 
-  const user = existing || { email, preferences, sessions: [], currentLevel: 1, pet: normalizePet({ name: preferences.petName, age: 1 }) };
+  const user = existing || {
+    email,
+    preferences,
+    sessions: [],
+    currentLevel: 1,
+    pet: normalizePet({ name: preferences.petName, age: 1 }),
+    wrongBook: []
+  };
   user.email = email;
   user.preferences = preferences;
   user.sessions = Array.isArray(user.sessions) ? user.sessions : [];
   user.currentLevel = deriveDifficultyLevel(user);
   user.pet = normalizePet({ ...user.pet, name: preferences.petName });
+  user.wrongBook = normalizeWrongBook(user.wrongBook);
   store.users[key] = user;
 
   appendLog(`${email} 更新了学习订阅配置`);
@@ -420,6 +429,7 @@ function restoreUserState(payload) {
   const cached = payload && typeof payload === "object" ? payload : {};
   const profile = cached.profile && typeof cached.profile === "object" ? cached.profile : {};
   const history = Array.isArray(cached.history) ? cached.history : [];
+  const wrongBook = Array.isArray(cached.wrongBook) ? cached.wrongBook : [];
 
   const user = upsertUser({
     email,
@@ -466,6 +476,28 @@ function restoreUserState(payload) {
   } else {
     user.pet = normalizePet({ ...user.pet, name: profile.petName });
   }
+
+  const mergedWrongMap = new Map();
+  normalizeWrongBook(user.wrongBook).forEach((entry) => {
+    const key = `${entry.prompt}__${entry.correctAnswer}`;
+    mergedWrongMap.set(key, entry);
+  });
+  normalizeWrongBook(wrongBook).forEach((entry) => {
+    const key = `${entry.prompt}__${entry.correctAnswer}`;
+    const prev = mergedWrongMap.get(key);
+    if (!prev) {
+      mergedWrongMap.set(key, entry);
+      return;
+    }
+    mergedWrongMap.set(key, {
+      ...prev,
+      wrongCount: Math.max(Number(prev.wrongCount || 1), Number(entry.wrongCount || 1)),
+      lastWrongAt: new Date(prev.lastWrongAt || 0).getTime() >= new Date(entry.lastWrongAt || 0).getTime()
+        ? prev.lastWrongAt
+        : entry.lastWrongAt
+    });
+  });
+  user.wrongBook = normalizeWrongBook(Array.from(mergedWrongMap.values())).slice(0, 500);
 
   saveStore();
   appendLog(`${email} 从本机缓存恢复了学习记录`);
@@ -619,12 +651,53 @@ function submitQuiz(payload) {
     };
   });
 
+  const wrongEntries = reviewed
+    .filter((item) => !item.isCorrect)
+    .map((item) => {
+      const question = questions.find((q) => q.id === item.questionId) || {};
+      return {
+        id: createId(),
+        date: formatDateKey(new Date()),
+        sessionId,
+        type: "custom",
+        prompt: String(item.prompt || ""),
+        answer: String(item.answer || ""),
+        correctAnswer: String(item.correctAnswer || ""),
+        hint: String(question.hint || ""),
+        wrongCount: 1,
+        lastWrongAt: new Date().toISOString()
+      };
+    });
+
+  const wrongMap = new Map();
+  normalizeWrongBook(user.wrongBook).forEach((entry) => {
+    const key = `${entry.prompt}__${entry.correctAnswer}`;
+    wrongMap.set(key, entry);
+  });
+  wrongEntries.forEach((entry) => {
+    const key = `${entry.prompt}__${entry.correctAnswer}`;
+    const prev = wrongMap.get(key);
+    if (!prev) {
+      wrongMap.set(key, entry);
+      return;
+    }
+    wrongMap.set(key, {
+      ...prev,
+      answer: entry.answer || prev.answer,
+      hint: entry.hint || prev.hint,
+      wrongCount: Number(prev.wrongCount || 1) + 1,
+      lastWrongAt: entry.lastWrongAt
+    });
+  });
+  user.wrongBook = normalizeWrongBook(Array.from(wrongMap.values())).slice(0, 500);
+
   session.quizResult = {
     submittedAt: new Date().toISOString(),
     score,
     total: questions.length,
     accuracy: questions.length ? Math.round((score / questions.length) * 100) : 0,
-    answers: reviewed
+    answers: reviewed,
+    wrongItems: wrongEntries
   };
 
   appendLog(`${user.email} 完成了晚间测试，正确率 ${session.quizResult.accuracy}%`);
@@ -1651,7 +1724,8 @@ function normalizeStore(rawStore) {
       preferences: normalizePreferences({ ...user?.preferences, email }),
       sessions: Array.isArray(user?.sessions) ? user.sessions : [],
       currentLevel: Number(user?.currentLevel || 1),
-      pet: normalizePet({ ...user?.pet, name: user?.pet?.name || user?.preferences?.petName })
+      pet: normalizePet({ ...user?.pet, name: user?.pet?.name || user?.preferences?.petName }),
+      wrongBook: normalizeWrongBook(user?.wrongBook)
     };
   });
 
@@ -1682,6 +1756,24 @@ function normalizePet(input) {
     name: normalizePetName(input?.name),
     age: Math.max(1, Number(input?.age || 1))
   };
+}
+
+function normalizeWrongBook(entries) {
+  return (Array.isArray(entries) ? entries : [])
+    .map((entry) => ({
+      id: String(entry?.id || createId()),
+      date: String(entry?.date || formatDateKey(new Date())),
+      sessionId: String(entry?.sessionId || ""),
+      type: normalizeItemType(entry?.type),
+      prompt: String(entry?.prompt || ""),
+      answer: String(entry?.answer || ""),
+      correctAnswer: String(entry?.correctAnswer || ""),
+      hint: String(entry?.hint || ""),
+      wrongCount: Math.max(1, Number(entry?.wrongCount || 1)),
+      lastWrongAt: String(entry?.lastWrongAt || new Date().toISOString())
+    }))
+    .filter((entry) => entry.prompt && entry.correctAnswer)
+    .sort((a, b) => new Date(b.lastWrongAt || 0).getTime() - new Date(a.lastWrongAt || 0).getTime());
 }
 
 function normalizeContentPool(items) {
@@ -1744,7 +1836,16 @@ function normalizeSession(session) {
           score: Number(session.quizResult.score || 0),
           total: Number(session.quizResult.total || 0),
           accuracy: Number(session.quizResult.accuracy || 0),
-          answers: Array.isArray(session.quizResult.answers) ? session.quizResult.answers : []
+          answers: Array.isArray(session.quizResult.answers) ? session.quizResult.answers : [],
+          wrongItems: Array.isArray(session.quizResult.wrongItems)
+            ? session.quizResult.wrongItems.map((item) => ({
+                id: String(item?.id || createId()),
+                prompt: String(item?.prompt || ""),
+                answer: String(item?.answer || ""),
+                correctAnswer: String(item?.correctAnswer || ""),
+                hint: String(item?.hint || "")
+              }))
+            : []
         }
       : null,
     delivery: {

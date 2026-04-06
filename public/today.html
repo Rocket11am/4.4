@@ -27,7 +27,7 @@
   <main class="main site-shell">
     <section id="missing-email" class="card center-note" hidden>
       <h1 class="section-title">还没有学习账号</h1>
-      <p class="muted">请先在设置页填写邮箱与学习偏好。</p>
+      <p class="muted">请先去设置页填写邮箱和学习偏好。</p>
       <p><a class="btn" href="/settings"><span>去设置</span></a></p>
     </section>
 
@@ -52,21 +52,7 @@
         <p class="tiny">&gt; virtual pet</p>
         <h2 class="section-title">电子宠物</h2>
         <div class="pet-shell">
-          <div id="pet-avatar" class="pet-avatar pet-stage-seed" aria-hidden="true">
-            <div class="pet-sky"></div>
-            <div class="pet-character">
-              <div class="pet-ear pet-ear-left"></div>
-              <div class="pet-ear pet-ear-right"></div>
-              <div class="pet-head">
-                <div class="pet-eye pet-eye-left"></div>
-                <div class="pet-eye pet-eye-right"></div>
-                <div class="pet-mouth"></div>
-              </div>
-              <div class="pet-suit"></div>
-              <div class="pet-tail"></div>
-              <div class="pet-controller"></div>
-            </div>
-          </div>
+          <div id="pet-avatar" class="pet-avatar pet-stage-seed" aria-hidden="true"></div>
           <div class="pet-meta">
             <div class="pet-name-row">
               <strong id="pet-name" class="pet-name">小闪电</strong>
@@ -84,9 +70,7 @@
                 <span>本轮成长进度</span>
                 <span id="pet-progress-text">0 / 10</span>
               </div>
-              <div class="pet-progress-bar">
-                <div id="pet-progress-bar" class="pet-progress-fill" style="width:0%"></div>
-              </div>
+              <div class="pet-progress-bar"><div id="pet-progress-bar" class="pet-progress-fill" style="width:0%"></div></div>
               <p id="pet-next-tip" class="tiny">再连续完成 10 天，宠物会成长一级。</p>
             </div>
           </div>
@@ -96,7 +80,13 @@
       <article class="card review-panel" id="review-panel">
         <h2 class="section-title">晚间复习</h2>
         <form id="quiz-form" class="list"></form>
+        <div id="quiz-wrong" class="list" style="margin-top:12px;"></div>
       </article>
+    </section>
+
+    <section class="card" id="wrongbook-card" hidden>
+      <h2 class="section-title">错题本</h2>
+      <div id="wrongbook-list" class="list"></div>
     </section>
 
     <section id="today-items-card" class="card" hidden>

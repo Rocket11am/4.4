@@ -3,6 +3,7 @@
     missingEmail: document.getElementById("missing-email"),
     todayContent: document.getElementById("today-content"),
     todayItemsCard: document.getElementById("today-items-card"),
+    wrongbookCard: document.getElementById("wrongbook-card"),
     streak: document.getElementById("streak"),
     doneFlag: document.getElementById("done-flag"),
     completionRate: document.getElementById("completion-rate"),
@@ -12,6 +13,8 @@
     sendEveningBtn: document.getElementById("send-evening-btn"),
     todayItems: document.getElementById("today-items"),
     quizForm: document.getElementById("quiz-form"),
+    quizWrong: document.getElementById("quiz-wrong"),
+    wrongbookList: document.getElementById("wrongbook-list"),
     reviewPanel: document.getElementById("review-panel"),
     petAvatar: document.getElementById("pet-avatar"),
     petName: document.getElementById("pet-name"),
@@ -33,12 +36,8 @@
     var sessionId = DLA.getParam("sessionId");
     var date = DLA.getParam("date");
     var history = state && Array.isArray(state.history) ? state.history : [];
-    if (sessionId) {
-      return history.filter(function (item) { return item.id === sessionId; })[0] || state.activeSession || null;
-    }
-    if (date) {
-      return history.filter(function (item) { return item.date === date; })[0] || state.activeSession || null;
-    }
+    if (sessionId) return history.filter(function (item) { return item.id === sessionId; })[0] || state.activeSession || null;
+    if (date) return history.filter(function (item) { return item.date === date; })[0] || state.activeSession || null;
     return state && state.activeSession ? state.activeSession : null;
   }
 
@@ -50,6 +49,7 @@
     refs.missingEmail.hidden = false;
     refs.todayContent.hidden = true;
     refs.todayItemsCard.hidden = true;
+    refs.wrongbookCard.hidden = true;
   }
 
   function renderItems(session) {
@@ -91,16 +91,48 @@
       }).join("");
       return '<div class="list-item"><strong>' + (index + 1) + ". " + DLA.escapeHtml(question.prompt) + '</strong><div class="list">' + options + "</div></div>";
     }).join("") + '<button class="btn" type="submit"><span>提交复习结果</span></button>';
+  }
 
-    if (session && session.quizResult) {
-      refs.quizForm.innerHTML += [
-        '<div class="list-item">',
-        '<div class="ok">已提交：' + DLA.escapeHtml(DLA.formatDateTime(session.quizResult.submittedAt)) + "</div>",
-        "<div>得分：" + session.quizResult.score + "/" + session.quizResult.total + "</div>",
-        "<div>正确率：" + session.quizResult.accuracy + "%</div>",
-        "</div>"
-      ].join("");
+  function renderQuizWrong(session) {
+    var wrongItems = session && session.quizResult && Array.isArray(session.quizResult.wrongItems) ? session.quizResult.wrongItems : [];
+    if (!wrongItems.length) {
+      refs.quizWrong.innerHTML = '<div class="empty">本次复习无错题，继续保持。</div>';
+      return;
     }
+    refs.quizWrong.innerHTML = [
+      '<article class="list-item">',
+      '<strong>本次错题</strong>',
+      '</article>',
+      wrongItems.map(function (item, idx) {
+        return [
+          '<article class="list-item">',
+          '<div><strong>' + (idx + 1) + ". " + DLA.escapeHtml(item.prompt || "") + "</strong></div>",
+          '<p class="muted">你的答案：' + DLA.escapeHtml(item.answer || "(未作答)") + "</p>",
+          '<p class="muted">正确答案：' + DLA.escapeHtml(item.correctAnswer || "--") + "</p>",
+          item.hint ? '<p class="muted">提示：' + DLA.escapeHtml(item.hint) + "</p>" : "",
+          "</article>"
+        ].join("");
+      }).join("")
+    ].join("");
+  }
+
+  function renderWrongBook() {
+    var wrongBook = state && Array.isArray(state.wrongBook) ? state.wrongBook : [];
+    refs.wrongbookCard.hidden = false;
+    if (!wrongBook.length) {
+      refs.wrongbookList.innerHTML = '<div class="empty">错题本为空，继续保持。</div>';
+      return;
+    }
+    refs.wrongbookList.innerHTML = wrongBook.slice(0, 80).map(function (item, idx) {
+      return [
+        '<article class="list-item">',
+        '<div><strong>' + (idx + 1) + ". " + DLA.escapeHtml(item.prompt || "") + "</strong></div>",
+        '<p class="muted">正确答案：' + DLA.escapeHtml(item.correctAnswer || "--") + "</p>",
+        '<p class="muted">最近错题时间：' + DLA.escapeHtml(DLA.formatDateTime(item.lastWrongAt)) + " / 错误次数：" + DLA.escapeHtml(String(item.wrongCount || 1)) + "</p>",
+        item.hint ? '<p class="muted">提示：' + DLA.escapeHtml(item.hint) + "</p>" : "",
+        "</article>"
+      ].join("");
+    }).join("");
   }
 
   function renderPet() {
@@ -134,6 +166,8 @@
     refs.doneFlag.textContent = session && session.completedAt ? "已完成" : "未完成";
     renderItems(session);
     renderQuiz(session);
+    renderQuizWrong(session);
+    renderWrongBook();
     renderPet();
     refs.completeBtn.disabled = !isCurrent;
     refs.sendMorningBtn.disabled = !state || !state.profile;
@@ -272,7 +306,6 @@
         return;
       }
     }
-
     if (DLA.getParam("panel") === "review" && refs.reviewPanel) {
       window.requestAnimationFrame(function () {
         refs.reviewPanel.scrollIntoView({ behavior: "smooth", block: "start" });
