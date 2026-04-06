@@ -27,12 +27,12 @@
   <main class="main site-shell">
     <section id="missing-email" class="card center-note" hidden>
       <h1 class="section-title">还没有学习账号</h1>
-      <p class="muted">请先去设置页填写邮箱和学习偏好。</p>
+      <p class="muted">请先到设置页面填写邮箱和学习偏好。</p>
       <p><a class="btn" href="/settings"><span>去设置</span></a></p>
     </section>
 
     <section id="today-content" class="today-shell" hidden>
-      <article class="card">
+      <article class="card today-status-card">
         <p class="tiny">&gt; daily status</p>
         <h1 class="terminal-title">今日学习</h1>
         <div class="stat-grid">
@@ -81,16 +81,16 @@
         </div>
       </article>
 
+      <article id="today-items-card" class="card today-items-card" hidden>
+        <h2 class="section-title">学习内容</h2>
+        <div id="today-items" class="list"></div>
+      </article>
+
       <article class="card review-panel" id="review-panel">
         <h2 class="section-title">晚间复习</h2>
         <form id="quiz-form" class="list"></form>
         <div id="quiz-wrong" class="list" style="margin-top:12px;"></div>
       </article>
-    </section>
-
-    <section id="today-items-card" class="card" hidden>
-      <h2 class="section-title">学习内容</h2>
-      <div id="today-items" class="list"></div>
     </section>
   </main>
 

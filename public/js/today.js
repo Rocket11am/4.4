@@ -30,6 +30,11 @@
 
   var email = "";
   var state = null;
+  var quizUi = {
+    sessionId: "",
+    activeIndex: 0,
+    answers: {}
+  };
 
   function getSessionFromState() {
     var sessionId = DLA.getParam("sessionId");
@@ -52,8 +57,9 @@
 
   function renderItems(session) {
     var items = session && Array.isArray(session.items) ? session.items : [];
+    refs.todayItemsCard.hidden = false;
     if (!items.length) {
-      refs.todayItems.innerHTML = '<div class="empty">当前没有可展示的学习内容。</div>';
+      refs.todayItems.innerHTML = '<div class="empty">当前还没有可展示的学习内容。先点击“发送今日内容”生成并推送。</div>';
       return;
     }
     refs.todayItems.innerHTML = items.map(function (item, index) {
@@ -77,18 +83,66 @@
     }).join("");
   }
 
+  function ensureQuizUi(session, questions) {
+    var sid = session && session.id ? session.id : "";
+    if (quizUi.sessionId !== sid) {
+      quizUi.sessionId = sid;
+      quizUi.activeIndex = 0;
+      quizUi.answers = {};
+    }
+    if (quizUi.activeIndex >= questions.length) {
+      quizUi.activeIndex = Math.max(0, questions.length - 1);
+    }
+  }
+
   function renderQuiz(session) {
     var questions = session && session.quiz && Array.isArray(session.quiz.questions) ? session.quiz.questions : [];
     if (!questions.length) {
       refs.quizForm.innerHTML = '<div class="empty">当前没有可提交的晚间复习题。</div>';
       return;
     }
-    refs.quizForm.innerHTML = questions.map(function (question, index) {
-      var options = (question.options || []).map(function (option) {
-        return '<label class="list-item"><input type="radio" name="' + question.id + '" value="' + DLA.escapeHtml(option) + '"> ' + DLA.escapeHtml(option) + "</label>";
-      }).join("");
-      return '<div class="list-item"><strong>' + (index + 1) + ". " + DLA.escapeHtml(question.prompt) + '</strong><div class="list">' + options + "</div></div>";
-    }).join("") + '<button class="btn" type="submit"><span>提交复习结果</span></button>';
+
+    ensureQuizUi(session, questions);
+    var active = questions[quizUi.activeIndex];
+    var selected = quizUi.answers[active.id] || "";
+    var submitted = Boolean(session && session.quizResult && session.quizResult.submittedAt);
+
+    var options = (active.options || []).map(function (option, optionIdx) {
+      var checked = selected === option ? ' checked' : "";
+      return [
+        '<label class="quiz-option">',
+        '<input type="radio" name="quiz-active" data-question-id="' + DLA.escapeHtml(active.id) + '" value="' + DLA.escapeHtml(option) + '"' + checked + (submitted ? " disabled" : "") + ">",
+        '<span class="quiz-option-key">' + String.fromCharCode(65 + optionIdx) + "</span>",
+        '<span>' + DLA.escapeHtml(option) + "</span>",
+        "</label>"
+      ].join("");
+    }).join("");
+
+    var dots = questions.map(function (q, idx) {
+      var answered = quizUi.answers[q.id] ? " is-answered" : "";
+      var activeClass = idx === quizUi.activeIndex ? " is-active" : "";
+      return '<button type="button" class="quiz-dot' + answered + activeClass + '" data-quiz-index="' + idx + '"' + (submitted ? " disabled" : "") + ">" + (idx + 1) + "</button>";
+    }).join("");
+
+    refs.quizForm.innerHTML = [
+      '<div class="quiz-shell">',
+      '<div class="quiz-head">',
+      '<div class="tiny">第 <b>' + (quizUi.activeIndex + 1) + "</b> / " + questions.length + " 题</div>",
+      submitted ? '<div class="tiny ok">本次已提交</div>' : '<div class="tiny">单选题</div>',
+      "</div>",
+      '<div class="quiz-question">' + DLA.escapeHtml(active.prompt || "") + "</div>",
+      '<div class="quiz-options">' + options + "</div>",
+      '<div class="quiz-nav-actions">',
+      '<button type="button" class="btn btn-alt" data-quiz-nav="prev"' + (quizUi.activeIndex <= 0 || submitted ? " disabled" : "") + '><span>上一题</span></button>',
+      '<button type="button" class="btn btn-alt" data-quiz-nav="next"' + (quizUi.activeIndex >= questions.length - 1 || submitted ? " disabled" : "") + '><span>下一题</span></button>',
+      '<button class="btn" type="submit"' + (submitted ? " disabled" : "") + '><span>提交复习结果</span></button>',
+      "</div>",
+      '<div class="quiz-pager">' + dots + "</div>",
+      submitted && session.quizResult
+        ? ('<div class="list-item"><div class="ok">得分：' + session.quizResult.score + "/" + session.quizResult.total + "（" + session.quizResult.accuracy + "%）</div></div>")
+        : "",
+      "</div>"
+    ].join("");
   }
 
   function renderQuizWrong(session) {
@@ -105,12 +159,13 @@
           '<div><strong>' + (idx + 1) + ". " + DLA.escapeHtml(item.prompt || "") + "</strong></div>",
           '<p class="muted">你的答案：' + DLA.escapeHtml(item.answer || "(未作答)") + "</p>",
           '<p class="muted">正确答案：' + DLA.escapeHtml(item.correctAnswer || "--") + "</p>",
-          item.hint ? '<p class="muted">提示：' + DLA.escapeHtml(item.hint) + "</p>" : "",
+          item.hint ? ('<p class="muted">提示：' + DLA.escapeHtml(item.hint) + "</p>") : "",
           "</article>"
         ].join("");
       }).join("")
     ].join("");
   }
+
   function renderPet() {
     var pet = state && state.pet ? state.pet : null;
     if (!pet) return;
@@ -134,7 +189,6 @@
     var isCurrent = isCurrentSession(session);
     refs.missingEmail.hidden = true;
     refs.todayContent.hidden = false;
-    refs.todayItemsCard.hidden = false;
     DLA.fillEmailLinks(email);
 
     refs.streak.textContent = String(DLA.safeGet(state, ["stats", "streak"], 0)) + " 天";
@@ -234,10 +288,11 @@
     var sessionId = session ? session.id : "";
     var questions = session && session.quiz && Array.isArray(session.quiz.questions) ? session.quiz.questions : [];
     if (!sessionId || !questions.length) return;
+
     var answers = questions.map(function (question) {
-      var checked = refs.quizForm.querySelector('input[name="' + question.id + '"]:checked');
-      return checked ? checked.value : "";
+      return quizUi.answers[question.id] || "";
     });
+
     try {
       var response = await DLA.fetchJson("/api/quiz-submit", { method: "POST", body: { email: email, sessionId: sessionId, answers: answers } });
       state = response.state;
@@ -249,11 +304,56 @@
     }
   }
 
+  function bindQuizInteractions() {
+    refs.quizForm.addEventListener("change", function (event) {
+      var target = event.target;
+      if (!target || target.name !== "quiz-active") return;
+      var questionId = target.getAttribute("data-question-id") || "";
+      if (!questionId) return;
+      quizUi.answers[questionId] = target.value || "";
+
+      var session = getSessionFromState();
+      var questions = session && session.quiz && Array.isArray(session.quiz.questions) ? session.quiz.questions : [];
+      if (quizUi.activeIndex < questions.length - 1) {
+        quizUi.activeIndex += 1;
+      }
+      renderQuiz(session);
+    });
+
+    refs.quizForm.addEventListener("click", function (event) {
+      var target = event.target;
+      if (!target) return;
+      var navBtn = target.closest("[data-quiz-nav]");
+      if (navBtn) {
+        var nav = navBtn.getAttribute("data-quiz-nav");
+        if (nav === "prev") {
+          quizUi.activeIndex = Math.max(0, quizUi.activeIndex - 1);
+        } else if (nav === "next") {
+          var session = getSessionFromState();
+          var count = session && session.quiz && Array.isArray(session.quiz.questions) ? session.quiz.questions.length : 0;
+          quizUi.activeIndex = Math.min(Math.max(0, count - 1), quizUi.activeIndex + 1);
+        }
+        renderQuiz(getSessionFromState());
+        return;
+      }
+
+      var dotBtn = target.closest("[data-quiz-index]");
+      if (dotBtn) {
+        var idx = Number(dotBtn.getAttribute("data-quiz-index"));
+        if (!Number.isNaN(idx)) {
+          quizUi.activeIndex = Math.max(0, idx);
+          renderQuiz(getSessionFromState());
+        }
+      }
+    });
+  }
+
   function bind() {
     refs.completeBtn.addEventListener("click", completeToday);
     refs.sendMorningBtn.addEventListener("click", sendMorning);
     refs.sendEveningBtn.addEventListener("click", sendEvening);
     refs.quizForm.addEventListener("submit", submitQuiz);
+    bindQuizInteractions();
   }
 
   async function init() {
