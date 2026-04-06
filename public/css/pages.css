@@ -83,19 +83,21 @@
 
 .pet-shell {
   display: grid;
-  gap: 10px;
+  gap: 4px;
   align-items: start;
 }
 
 .pet-avatar {
   position: relative;
-  min-height: 150px;
-  aspect-ratio: 4 / 3;
+  width: min(180px, 100%);
+  min-height: 180px;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
   border: 2px solid var(--cyan);
-  background: linear-gradient(180deg, #f5d9b8 0%, #f1cda2 55%, #eebd8a 100%);
+  background: transparent;
   overflow: hidden;
   image-rendering: pixelated;
-  --pet-scale: 0.56;
+  --pet-scale: 1;
 }
 
 .pet-avatar::before {
@@ -127,21 +129,22 @@
 }
 
 .pet-stage-seed {
-  --pet-scale: 0.31;
+  --pet-scale: 0.9;
 }
 
 .pet-stage-spark {
-  --pet-scale: 0.33;
+  --pet-scale: 1;
 }
 
 .pet-stage-legend {
-  --pet-scale: 0.35;
+  --pet-scale: 1.08;
 }
 
 .pet-meta {
   display: grid;
   gap: 8px;
   align-content: start;
+  margin-top: -2px;
 }
 
 .pet-name-row {
