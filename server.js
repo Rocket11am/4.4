@@ -634,6 +634,13 @@ function submitQuiz(payload) {
   }
 
   const normalizedSession = normalizeSession(session);
+  if (normalizedSession.quizResult && normalizedSession.quizResult.submittedAt) {
+    return {
+      ok: false,
+      message: "您今日已经提交过答案了，请明天再来吧",
+      state: buildClientState(user.email)
+    };
+  }
   const answers = Array.isArray(payload?.answers) ? payload.answers : [];
   const questions = normalizedSession.quiz?.questions || [];
   let score = 0;

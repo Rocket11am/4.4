@@ -288,6 +288,10 @@
     var sessionId = session ? session.id : "";
     var questions = session && session.quiz && Array.isArray(session.quiz.questions) ? session.quiz.questions : [];
     if (!sessionId || !questions.length) return;
+    if (session && session.quizResult && session.quizResult.submittedAt) {
+      DLA.showToast("您今日已经提交过答案了，请明天再来吧");
+      return;
+    }
 
     var answers = questions.map(function (question) {
       return quizUi.answers[question.id] || "";

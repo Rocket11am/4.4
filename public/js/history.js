@@ -38,16 +38,12 @@
 
     var cells = [];
     var offset;
-    for (offset = 0; offset < startWeekday; offset += 1) {
-      cells.push({ day: "", muted: true, checked: false });
-    }
-
+    for (offset = 0; offset < startWeekday; offset += 1) cells.push({ day: "", muted: true, checked: false });
     var day;
     for (day = 1; day <= daysInMonth; day += 1) {
       var dateKey = [year, String(month + 1).padStart(2, "0"), String(day).padStart(2, "0")].join("-");
       cells.push({ day: day, muted: false, checked: Boolean(quizDoneMap[dateKey]) });
     }
-
     while (cells.length % 7 !== 0) cells.push({ day: "", muted: true, checked: false });
     return cells;
   }
@@ -83,11 +79,11 @@
     for (i = 6; i >= 0; i -= 1) {
       var d = new Date();
       d.setDate(d.getDate() - i);
-      var k = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
+      var key = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
       points.push({
-        key: k,
+        key: key,
         label: String(d.getMonth() + 1).padStart(2, "0") + "/" + String(d.getDate()).padStart(2, "0"),
-        value: map[k] || 0
+        value: map[key] || 0
       });
     }
     return points;
@@ -95,11 +91,6 @@
 
   function renderAccuracyChart() {
     var points = last7AccuracyPoints();
-    if (!points.length) {
-      refs.accuracyChart.innerHTML = '<div class="empty">暂无复习正确率数据。</div>';
-      return;
-    }
-
     var width = 420;
     var height = 180;
     var padLeft = 34;
@@ -190,8 +181,48 @@
     ].join("");
   }
 
+  function buildWrongBookFallback() {
+    var fallbackMap = new Map();
+    var sessions = state && Array.isArray(state.history) ? state.history : [];
+    sessions.forEach(function (session) {
+      var wrongItems = session && session.quizResult && Array.isArray(session.quizResult.wrongItems)
+        ? session.quizResult.wrongItems
+        : [];
+      wrongItems.forEach(function (item) {
+        var prompt = String(item && item.prompt || "");
+        var correct = String(item && item.correctAnswer || "");
+        if (!prompt || !correct) return;
+        var key = prompt + "__" + correct;
+        var prev = fallbackMap.get(key);
+        if (!prev) {
+          fallbackMap.set(key, {
+            id: String(item && item.id || key),
+            prompt: prompt,
+            correctAnswer: correct,
+            lastAnswer: String(item && item.answer || ""),
+            hint: String(item && item.hint || ""),
+            wrongCount: 1,
+            lastWrongAt: session && session.quizResult ? session.quizResult.submittedAt : null,
+            sessionDate: session && session.date ? session.date : ""
+          });
+          return;
+        }
+        prev.wrongCount = Number(prev.wrongCount || 1) + 1;
+        prev.lastAnswer = String(item && item.answer || prev.lastAnswer || "");
+        prev.hint = String(item && item.hint || prev.hint || "");
+        prev.lastWrongAt = session && session.quizResult && session.quizResult.submittedAt
+          ? session.quizResult.submittedAt
+          : prev.lastWrongAt;
+        if (!prev.sessionDate && session && session.date) prev.sessionDate = session.date;
+        fallbackMap.set(key, prev);
+      });
+    });
+    return Array.from(fallbackMap.values());
+  }
+
   function renderWrongbook() {
-    var wrongBook = state && Array.isArray(state.wrongBook) ? state.wrongBook : [];
+    var wrongBook = state && Array.isArray(state.wrongBook) ? state.wrongBook.slice() : [];
+    if (!wrongBook.length) wrongBook = buildWrongBookFallback();
     if (!wrongBook.length) {
       refs.wrongbookList.innerHTML = '<div class="empty">暂无错题，继续保持。</div>';
       return;
@@ -234,7 +265,6 @@
     refs.historyEmpty.hidden = true;
     refs.historyContent.hidden = false;
     DLA.fillEmailLinks(email);
-
     refs.statStreak.textContent = String(DLA.safeGet(state, ["stats", "streak"], 0));
     refs.statDays.textContent = String(DLA.safeGet(state, ["stats", "activeDays"], 0));
     refs.statCompletion.textContent = String(DLA.safeGet(state, ["stats", "completionRate"], 0)) + "%";
