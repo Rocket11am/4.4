@@ -1,4 +1,4 @@
-const http = require("http");
+﻿const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const tls = require("tls");
@@ -13,16 +13,11 @@ const DATA_DIR = process.env.VERCEL ? path.join(RUNTIME_ROOT, "daily-learning-as
 const STORE_PATH = path.join(DATA_DIR, "store.json");
 const CONTENT_PATH = path.join(DATA_DIR, "content.json");
 const TRACKING_GIF = Buffer.from("R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", "base64");
-const ARK_API_KEY = String(process.env.ARK_API_KEY || "").trim();
-const ARK_BASE_URL = String(process.env.ARK_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3").trim().replace(/\/$/, "");
-const ARK_MODEL = String(process.env.ARK_MODEL || process.env.ARK_ENDPOINT_ID || "").trim();
-const ARK_TIMEOUT_MS = Number(process.env.ARK_TIMEOUT_MS || 45000);
 
 const TYPE_META = {
-  vocabulary: { label: "单词记忆", reviewEligible: true, accent: "#FF3AF2" },
-  spoken: { label: "地道口语表达", reviewEligible: true, accent: "#00F5D4" },
-  finance: { label: "每日财经资讯", reviewEligible: false, accent: "#FFE600" },
-  ai_news: { label: "每日AI前沿资讯", reviewEligible: false, accent: "#7B2FFF" },
+  vocabulary: { label: "英语单词", reviewEligible: true, accent: "#FF3AF2" },
+  spoken: { label: "英语口语", reviewEligible: true, accent: "#00F5D4" },
+  finance: { label: "财经新闻", reviewEligible: false, accent: "#FFE600" },
   custom: { label: "自定义主题", reviewEligible: false, accent: "#FF6B35" }
 };
 
@@ -30,11 +25,6 @@ const LEGACY_TYPE_MAP = {
   vocabulary: "vocabulary",
   spoken: "spoken",
   finance: "finance",
-  "ai-news": "ai_news",
-  ai_news: "ai_news",
-  ai: "ai_news",
-  aifrontier: "ai_news",
-  "ai_frontier": "ai_news",
   custom: "custom",
   business: "spoken",
   travel: "spoken",
@@ -84,12 +74,6 @@ async function handleApi(req, res, url) {
     return;
   }
 
-  if (req.method === "GET" && url.pathname === "/api/ai-health") {
-    const health = await checkArkHealth();
-    respondJson(res, 200, health);
-    return;
-  }
-
   if (req.method === "GET" && url.pathname === "/api/email-open") {
     markDeliveryOpen(url.searchParams.get("email"), url.searchParams.get("sessionId"), url.searchParams.get("slot"));
     res.writeHead(200, {
@@ -111,6 +95,8 @@ async function handleApi(req, res, url) {
     markDeliveryClick(email, sessionId, slot);
     if (action === "complete") {
       completeSessionInternal(email, sessionId, "email");
+      respondEmailCompletePage(res);
+      return;
     }
 
     res.writeHead(302, { Location: redirect });
@@ -123,12 +109,6 @@ async function handleApi(req, res, url) {
     const user = upsertUser(body);
     saveStore();
     respondJson(res, 200, buildClientState(user.email));
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/restore-state") {
-    const body = await readBody(req);
-    respondJson(res, 200, restoreUserState(body));
     return;
   }
 
@@ -162,7 +142,7 @@ async function handleApi(req, res, url) {
 function serveStatic(res, pathname) {
   const routeMap = {
     "/": "/index.html",
-    "/onboarding": "/settings.html",
+    "/onboarding": "/onboarding.html",
     "/today": "/today.html",
     "/history": "/history.html",
     "/settings": "/settings.html"
@@ -199,7 +179,6 @@ function buildClientState(email) {
   const sessions = user ? sortSessions(user.sessions).map(normalizeSession) : [];
   const activeSession = sessions[0] || null;
   const stats = user ? buildStats(user, sessions) : emptyStats();
-  const pet = buildPetState(user, sessions, stats);
 
   return {
     ok: true,
@@ -209,7 +188,6 @@ function buildClientState(email) {
           dailyCount: user.preferences.dailyCount,
           learningTypes: user.preferences.learningTypes,
           customTopic: user.preferences.customTopic,
-          petName: user.preferences.petName,
           sendTime: user.preferences.sendTime,
           reviewEnabled: user.preferences.reviewEnabled,
           reviewTime: user.preferences.reviewTime,
@@ -218,10 +196,8 @@ function buildClientState(email) {
         }
       : null,
     stats,
-    pet,
-    wrongBook: user ? normalizeWrongBook(user.wrongBook).slice(0, 200) : [],
     activeSession,
-    history: sessions,
+    history: sessions.slice(0, 12),
     timeline: buildTimeline(sessions),
     logs: [...store.logs].reverse().slice(0, 8),
     availableTypes: Object.entries(TYPE_META).map(([id, meta]) => ({
@@ -249,39 +225,6 @@ function emptyStats() {
     openRate: 0,
     clickRate: 0
   };
-}
-
-function buildPetState(user, sessions, stats) {
-  const completedSessions = sessions.filter((session) => session.completedAt);
-  const currentStreak = Number(stats?.streak || 0);
-  const lifetimeFeeds = completedSessions.length;
-  const milestoneAge = 1 + Math.floor(currentStreak / 10);
-  const storedAge = Number(user?.pet?.age || 1);
-  const age = Math.max(1, storedAge, milestoneAge);
-  const level = age;
-  const progressDays = currentStreak % 10;
-  const daysToNextLevel = progressDays === 0 ? 10 : 10 - progressDays;
-  const stage = getPetStage(age);
-
-  return {
-    name: String(user?.preferences?.petName || user?.pet?.name || "小闪电").trim() || "小闪电",
-    age,
-    level,
-    stage: stage.id,
-    stageLabel: stage.label,
-    mood: currentStreak >= 3 ? "活力满满" : "等待投喂",
-    currentStreak,
-    lifetimeFeeds,
-    progressDays,
-    daysToNextLevel,
-    fedToday: completedSessions.some((session) => session.date === formatDateKey(new Date()))
-  };
-}
-
-function getPetStage(age) {
-  if (age >= 7) return { id: "legend", label: "机甲成长体" };
-  if (age >= 3) return { id: "spark", label: "机甲进阶体" };
-  return { id: "seed", label: "像素幼宠" };
 }
 
 function buildStats(user, sessions) {
@@ -374,10 +317,10 @@ function deriveDifficultyLevel(user) {
     .filter((session) => session.quizResult && Number.isFinite(session.quizResult.accuracy))
     .slice(0, 5);
 
-  if (!sessions.length) return 2;
+  if (!sessions.length) return 1;
   const avg = sessions.reduce((sum, session) => sum + session.quizResult.accuracy, 0) / sessions.length;
-  if (avg > 75) return 3;
-  if (avg < 40) return 2;
+  if (avg > 80) return 3;
+  if (avg < 50) return 1;
   return 2;
 }
 
@@ -395,20 +338,11 @@ function upsertUser(input) {
     email
   });
 
-  const user = existing || {
-    email,
-    preferences,
-    sessions: [],
-    currentLevel: 1,
-    pet: normalizePet({ name: preferences.petName, age: 1 }),
-    wrongBook: []
-  };
+  const user = existing || { email, preferences, sessions: [], currentLevel: 1 };
   user.email = email;
   user.preferences = preferences;
   user.sessions = Array.isArray(user.sessions) ? user.sessions : [];
   user.currentLevel = deriveDifficultyLevel(user);
-  user.pet = normalizePet({ ...user.pet, name: preferences.petName });
-  user.wrongBook = normalizeWrongBook(user.wrongBook);
   store.users[key] = user;
 
   appendLog(`${email} 更新了学习订阅配置`);
@@ -420,97 +354,13 @@ function getUser(email) {
   return cleanEmail ? store.users[cleanEmail] || null : null;
 }
 
-function restoreUserState(payload) {
-  const email = normalizeEmail(payload?.email);
-  if (!email) {
-    return { ok: false, message: "缺少邮箱，无法恢复记录。" };
-  }
-
-  const cached = payload && typeof payload === "object" ? payload : {};
-  const profile = cached.profile && typeof cached.profile === "object" ? cached.profile : {};
-  const history = Array.isArray(cached.history) ? cached.history : [];
-  const wrongBook = Array.isArray(cached.wrongBook) ? cached.wrongBook : [];
-
-  const user = upsertUser({
-    email,
-    dailyCount: profile.dailyCount,
-    learningTypes: profile.learningTypes,
-    customTopic: profile.customTopic,
-    petName: profile.petName,
-    sendTime: profile.sendTime,
-    reviewEnabled: profile.reviewEnabled,
-    reviewTime: profile.reviewTime,
-    backupChannel: profile.backupChannel,
-    backupContact: profile.backupContact
-  });
-
-  const existing = Array.isArray(user.sessions) ? user.sessions : [];
-  const mergedMap = new Map();
-
-  existing.forEach((session) => {
-    const normalized = normalizeSession(session);
-    const key = normalized.id || `${normalized.date}-${normalized.createdAt}`;
-    mergedMap.set(key, normalized);
-  });
-
-  history.forEach((session) => {
-    const normalized = normalizeSession(session);
-    const key = normalized.id || `${normalized.date}-${normalized.createdAt}`;
-    const prev = mergedMap.get(key);
-    if (!prev) {
-      mergedMap.set(key, normalized);
-      return;
-    }
-    const prevTime = new Date(prev.createdAt || 0).getTime();
-    const nextTime = new Date(normalized.createdAt || 0).getTime();
-    if (nextTime >= prevTime) mergedMap.set(key, normalized);
-  });
-
-  user.sessions = sortSessions(Array.from(mergedMap.values())).map(normalizeSession);
-  if (cached.pet && typeof cached.pet === "object") {
-    user.pet = normalizePet({
-      ...user.pet,
-      name: cached.pet.name || profile.petName,
-      age: Math.max(Number(user?.pet?.age || 1), Number(cached.pet.age || 1))
-    });
-  } else {
-    user.pet = normalizePet({ ...user.pet, name: profile.petName });
-  }
-
-  const mergedWrongMap = new Map();
-  normalizeWrongBook(user.wrongBook).forEach((entry) => {
-    const key = `${entry.prompt}__${entry.correctAnswer}`;
-    mergedWrongMap.set(key, entry);
-  });
-  normalizeWrongBook(wrongBook).forEach((entry) => {
-    const key = `${entry.prompt}__${entry.correctAnswer}`;
-    const prev = mergedWrongMap.get(key);
-    if (!prev) {
-      mergedWrongMap.set(key, entry);
-      return;
-    }
-    mergedWrongMap.set(key, {
-      ...prev,
-      wrongCount: Math.max(Number(prev.wrongCount || 1), Number(entry.wrongCount || 1)),
-      lastWrongAt: new Date(prev.lastWrongAt || 0).getTime() >= new Date(entry.lastWrongAt || 0).getTime()
-        ? prev.lastWrongAt
-        : entry.lastWrongAt
-    });
-  });
-  user.wrongBook = normalizeWrongBook(Array.from(mergedWrongMap.values())).slice(0, 500);
-
-  saveStore();
-  appendLog(`${email} 从本机缓存恢复了学习记录`);
-  return buildClientState(email);
-}
-
 async function sendMorningLesson(email, mode) {
   const user = upsertUser({ email });
   const today = formatDateKey(new Date());
   let session = sortSessions(user.sessions).find((item) => item.date === today);
 
   if (!session) {
-    session = await createSession(user, mode, { fastMode: mode === "manual" });
+    session = createSession(user, mode);
     user.sessions.push(session);
   }
 
@@ -606,14 +456,6 @@ function completeSessionInternal(email, sessionId, source) {
 
   session.completedAt = new Date().toISOString();
   session.completionSource = source;
-  const completedSessions = user.sessions.filter((item) => item.completedAt).map(normalizeSession);
-  const streak = computeStreak(completedSessions);
-  const targetPetAge = Math.max(1, 1 + Math.floor(streak / 10));
-  user.pet = normalizePet({
-    ...user.pet,
-    name: user.preferences.petName,
-    age: Math.max(Number(user?.pet?.age || 1), targetPetAge)
-  });
   appendLog(`${user.email} 完成了 ${session.date} 的学习内容`);
   saveStore();
   return { ok: true, message: "已记录今日完成，连续学习数据已更新。" };
@@ -634,13 +476,6 @@ function submitQuiz(payload) {
   }
 
   const normalizedSession = normalizeSession(session);
-  if (normalizedSession.quizResult && normalizedSession.quizResult.submittedAt) {
-    return {
-      ok: false,
-      message: "您今日已经提交过答案了，请明天再来吧",
-      state: buildClientState(user.email)
-    };
-  }
   const answers = Array.isArray(payload?.answers) ? payload.answers : [];
   const questions = normalizedSession.quiz?.questions || [];
   let score = 0;
@@ -658,7 +493,7 @@ function submitQuiz(payload) {
     };
   });
 
-  const wrongEntries = reviewed
+  const wrongItems = reviewed
     .filter((item) => !item.isCorrect)
     .map((item) => {
       const question = questions.find((q) => q.id === item.questionId) || {};
@@ -671,32 +506,9 @@ function submitQuiz(payload) {
         answer: String(item.answer || ""),
         correctAnswer: String(item.correctAnswer || ""),
         hint: String(question.hint || ""),
-        wrongCount: 1,
         lastWrongAt: new Date().toISOString()
       };
     });
-
-  const wrongMap = new Map();
-  normalizeWrongBook(user.wrongBook).forEach((entry) => {
-    const key = `${entry.prompt}__${entry.correctAnswer}`;
-    wrongMap.set(key, entry);
-  });
-  wrongEntries.forEach((entry) => {
-    const key = `${entry.prompt}__${entry.correctAnswer}`;
-    const prev = wrongMap.get(key);
-    if (!prev) {
-      wrongMap.set(key, entry);
-      return;
-    }
-    wrongMap.set(key, {
-      ...prev,
-      answer: entry.answer || prev.answer,
-      hint: entry.hint || prev.hint,
-      wrongCount: Number(prev.wrongCount || 1) + 1,
-      lastWrongAt: entry.lastWrongAt
-    });
-  });
-  user.wrongBook = normalizeWrongBook(Array.from(wrongMap.values())).slice(0, 500);
 
   session.quizResult = {
     submittedAt: new Date().toISOString(),
@@ -704,7 +516,7 @@ function submitQuiz(payload) {
     total: questions.length,
     accuracy: questions.length ? Math.round((score / questions.length) * 100) : 0,
     answers: reviewed,
-    wrongItems: wrongEntries
+    wrongItems
   };
 
   appendLog(`${user.email} 完成了晚间测试，正确率 ${session.quizResult.accuracy}%`);
@@ -716,11 +528,10 @@ function submitQuiz(payload) {
   };
 }
 
-async function createSession(user, mode, options = {}) {
+function createSession(user, mode) {
   const now = new Date();
   const difficultyLevel = deriveDifficultyLevel(user);
-  const generated = await buildDailyContent(user.preferences, difficultyLevel, options);
-  const items = generated.items;
+  const items = buildDailyContent(user.preferences, difficultyLevel);
   const session = {
     id: createId(),
     email: user.email,
@@ -730,7 +541,7 @@ async function createSession(user, mode, options = {}) {
     learningTypes: user.preferences.learningTypes,
     customTopic: user.preferences.customTopic,
     difficultyLevel,
-    generationMode: generated.generationMode,
+    generationMode: "curated-fallback",
     items,
     reviewEligible: hasReviewableItems(items),
     completedAt: null,
@@ -746,19 +557,7 @@ async function createSession(user, mode, options = {}) {
   return session;
 }
 
-async function buildDailyContent(preferences, level, options = {}) {
-  const aiGenerated = await generateDailyContentWithArk(preferences, level, options);
-  if (aiGenerated.ok) {
-    return {
-      items: aiGenerated.items.map(normalizeContentItem),
-      generationMode: aiGenerated.generationMode
-    };
-  }
-
-  if (aiGenerated.reason) {
-    appendLog(`AI内容生成回退：${aiGenerated.reason}`);
-  }
-
+function buildDailyContent(preferences, level) {
   const types = normalizeLearningTypes(preferences.learningTypes);
   const count = normalizeDailyCount(preferences.dailyCount);
   const items = [];
@@ -769,398 +568,10 @@ async function buildDailyContent(preferences, level, options = {}) {
       items.push(buildCustomTopicItem(preferences.customTopic, level, index));
       continue;
     }
-    if (type === "finance" || type === "ai_news") {
-      items.push(buildNewsFallbackItem(type, index));
-      continue;
-    }
     items.push(pickCuratedItem(type, level));
   }
 
-  return {
-    items: items.map(normalizeContentItem),
-    generationMode: "curated-fallback"
-  };
-}
-
-function buildNewsFallbackItem(type, index) {
-  const today = formatDateKey(new Date());
-  const isAi = type === "ai_news";
-  return normalizeContentItem({
-    id: createId(),
-    type,
-    level: 2,
-    headline: isAi ? "今日AI前沿要闻待刷新" : "今日财经要闻待刷新",
-    chinese: isAi ? "AI前沿资讯" : "财经资讯",
-    summary: `${today} 实时要闻生成暂时超时，请稍后点击“发送今日内容”重试。`,
-    takeaway: "为确保资讯时效性，本条不使用历史静态新闻替代。",
-    keywords: [today, isAi ? "AI要闻" : "财经要闻", `slot-${index + 1}`],
-    source: "news-fallback"
-  });
-}
-
-async function generateDailyContentWithArk(preferences, level, options = {}) {
-  if (!ARK_API_KEY || !ARK_BASE_URL || !ARK_MODEL) {
-    return { ok: false, reason: "ark-not-configured" };
-  }
-
-  const types = normalizeLearningTypes(preferences.learningTypes);
-  const dailyCount = normalizeDailyCount(preferences.dailyCount);
-  const customTopic = String(preferences.customTopic || "").trim();
-  const targetLevel = Math.max(2, normalizeLevel(level));
-  const fastMode = Boolean(options?.fastMode);
-  const newsTimeoutMs = fastMode ? 5000 : 12000;
-  const arkTimeoutMs = fastMode ? 12000 : ARK_TIMEOUT_MS;
-  const newsContext = await fetchNewsContext(types, newsTimeoutMs);
-
-  const systemPrompt = [
-    "你是每日学习助手内容引擎。",
-    "输出必须是纯 JSON，不要 markdown，不要解释。",
-    "JSON schema: {\"items\":[...],\"quiz\":{\"questions\":[...]}}",
-    "items 每项字段：type(vocabulary/spoken/finance/ai_news), level(1-3), headline, chinese, phonetic, scene, example, summary, takeaway, keywords(string[])。",
-    "quiz.questions 每项字段：id,type(choice/text),prompt,answer,options(仅choice),hint。",
-    "地道口语表达和单词记忆必须至少 B2 难度，默认偏 C1，避免入门表达。",
-    "财经资讯和AI前沿资讯必须是当日或近24小时的重要要闻概述，且必须体现来源与时间线索。",
-    "不要编造新闻来源；如果没有可靠信息，宁可返回“待刷新”占位说明。",
-    "严格按用户选择的类型与数量生成，不得漏项。",
-    "如果是地道口语表达或单词记忆，优先给出可用于复习的题目；finance/ai_news 可以少出或不出题。"
-  ].join("\n");
-
-  const userPrompt = JSON.stringify(
-    {
-      goal: "生成今日学习内容与复习题",
-      today: formatDateKey(new Date()),
-      timezone: "Asia/Shanghai",
-      learningTypes: types,
-      dailyCount,
-      level: targetLevel,
-      customTopic,
-      hardRules: [
-        "必须生成与 dailyCount 等量的 items",
-        "items.type 仅允许出现在 learningTypes 中",
-        "spoken/vocabulary 的 level 不低于2",
-        "finance/ai_news 优先使用 newsContext"
-      ],
-      newsContext
-    },
-    null,
-    0
-  );
-
-  const temperatures = fastMode ? [0.35] : [0.35, 0.45];
-  let lastError = "";
-  for (let i = 0; i < temperatures.length; i += 1) {
-    try {
-      const raw = await arkChat({
-        model: ARK_MODEL,
-        systemPrompt,
-        userPrompt,
-        temperature: temperatures[i],
-        timeoutMs: arkTimeoutMs
-      });
-      const parsed = parseArkJson(raw);
-      const normalized = normalizeAiGenerated(parsed, {
-        level: targetLevel,
-        types,
-        dailyCount,
-        customTopic,
-        newsContext
-      });
-      if (isQualityAcceptable(normalized.items, { types, dailyCount })) {
-        return { ok: true, items: normalized.items, generationMode: "doubao-ark", quiz: normalized.quiz };
-      }
-      lastError = `quality-check-failed-attempt-${i + 1}`;
-    } catch (error) {
-      lastError = error.message || `attempt-${i + 1}-failed`;
-    }
-  }
-
-  appendLog(`AI内容生成失败：${lastError}`);
-  return { ok: false, reason: "ark-error" };
-}
-
-function isQualityAcceptable(items, context) {
-  if (!Array.isArray(items) || items.length < context.dailyCount) return false;
-  const allowed = new Set(context.types);
-  const subset = items.slice(0, context.dailyCount);
-  for (const item of subset) {
-    if (!allowed.has(item.type)) return false;
-    if ((item.type === "spoken" || item.type === "vocabulary") && Number(item.level || 0) < 2) return false;
-    if (!item.headline || String(item.headline).trim().length < 6) return false;
-  }
-  return true;
-}
-
-async function fetchNewsContext(types, timeoutMs = 12000) {
-  const needsFinance = types.includes("finance");
-  const needsAi = types.includes("ai_news");
-  const context = { finance: [], ai_news: [] };
-
-  const tasks = [];
-  if (needsFinance) {
-    tasks.push(
-      fetchRssItems("https://news.google.com/rss/search?q=finance+when:1d&hl=en-US&gl=US&ceid=US:en", 6, timeoutMs)
-        .then((items) => { context.finance = items; })
-        .catch(() => {})
-    );
-  }
-  if (needsAi) {
-    tasks.push(
-      fetchRssItems("https://news.google.com/rss/search?q=artificial+intelligence+when:1d&hl=en-US&gl=US&ceid=US:en", 6, timeoutMs)
-        .then((items) => { context.ai_news = items; })
-        .catch(() => {})
-    );
-  }
-  await Promise.all(tasks);
-  return context;
-}
-
-async function fetchRssItems(url, limit, timeoutMs = 12000) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), Math.max(3000, Number(timeoutMs) || 12000));
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) return [];
-    const xml = await response.text();
-    const matches = Array.from(xml.matchAll(/<item>([\s\S]*?)<\/item>/gi));
-    return matches.slice(0, limit).map((m) => {
-      const block = m[1] || "";
-      return {
-        title: xmlValue(block, "title"),
-        source: xmlValue(block, "source"),
-        pubDate: xmlValue(block, "pubDate"),
-        link: xmlValue(block, "link"),
-        description: stripHtml(xmlValue(block, "description"))
-      };
-    }).filter((x) => x.title);
-  } catch {
-    return [];
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-function xmlValue(block, tag) {
-  const reg = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i");
-  const match = String(block || "").match(reg);
-  if (!match) return "";
-  return decodeHtmlEntities(stripCdata(match[1]).trim());
-}
-
-function stripCdata(text) {
-  return String(text || "").replace(/^<!\[CDATA\[/, "").replace(/\]\]>$/, "");
-}
-
-function stripHtml(text) {
-  return String(text || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function decodeHtmlEntities(text) {
-  return String(text || "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
-}
-
-async function checkArkHealth() {
-  const configured = Boolean(ARK_API_KEY && ARK_BASE_URL && ARK_MODEL);
-  if (!configured) {
-    return {
-      ok: false,
-      configured,
-      baseUrl: ARK_BASE_URL,
-      model: ARK_MODEL,
-      message: "ARK未配置完整"
-    };
-  }
-
-  try {
-    await arkChat({
-      model: ARK_MODEL,
-      systemPrompt: "你是助手。返回JSON。",
-      userPrompt: "{\"ping\":true}"
-    });
-    return {
-      ok: true,
-      configured,
-      baseUrl: ARK_BASE_URL,
-      model: ARK_MODEL,
-      message: "ARK调用成功"
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      configured,
-      baseUrl: ARK_BASE_URL,
-      model: ARK_MODEL,
-      message: error.message
-    };
-  }
-}
-
-async function arkChat({ model, systemPrompt, userPrompt, temperature = 0.45, timeoutMs = ARK_TIMEOUT_MS }) {
-  const base = ARK_BASE_URL.replace(/\/(chat\/completions|responses)$/i, "");
-  const responsePayload = {
-    model,
-    temperature,
-    input: [
-      {
-        role: "system",
-        content: [{ type: "input_text", text: systemPrompt }]
-      },
-      {
-        role: "user",
-        content: [{ type: "input_text", text: userPrompt }]
-      }
-    ]
-  };
-
-  const responsesResult = await arkRequest(`${base}/responses`, responsePayload, timeoutMs);
-  if (responsesResult.ok) {
-    const responsesData = responsesResult.data;
-    const directText = responsesData?.output_text;
-    if (directText) return String(directText);
-
-    const nestedText = (responsesData?.output || [])
-      .flatMap((part) => part?.content || [])
-      .map((item) => item?.text || item?.output_text || "")
-      .filter(Boolean)
-      .join("\n")
-      .trim();
-    if (nestedText) return nestedText;
-  }
-
-  const chatPayload = {
-    model,
-    temperature,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt }
-    ]
-  };
-  const chatResult = await arkRequest(`${base}/chat/completions`, chatPayload, timeoutMs);
-  if (chatResult.ok) {
-    const content = chatResult?.data?.choices?.[0]?.message?.content;
-    if (content) return String(content);
-  }
-
-  const respErr = responsesResult.error || "responses-empty";
-  const chatErr = chatResult.error || "chat-empty";
-  throw new Error(`ark-http-failed:responses=${respErr};chat=${chatErr}`);
-}
-
-async function arkRequest(url, payload, timeoutMs = ARK_TIMEOUT_MS) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), Math.max(5000, Number(timeoutMs) || ARK_TIMEOUT_MS));
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${ARK_API_KEY}`
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      return {
-        ok: false,
-        error: data?.error?.message || data?.message || `HTTP ${response.status}`
-      };
-    }
-    return { ok: true, data };
-  } catch (error) {
-    return { ok: false, error: error.message || "request-failed" };
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-function parseArkJson(content) {
-  const clean = String(content || "").trim();
-  const fenced = clean.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const jsonText = fenced ? fenced[1].trim() : clean;
-  return JSON.parse(jsonText);
-}
-
-function normalizeAiGenerated(parsed, context) {
-  const items = Array.isArray(parsed?.items) ? parsed.items : [];
-  const quizQuestions = Array.isArray(parsed?.quiz?.questions) ? parsed.quiz.questions : [];
-  const resultItems = items
-    .slice(0, context.dailyCount)
-    .map((item, index) => {
-      const type = normalizeItemType(item?.type || context.types[index % context.types.length]);
-      const base = {
-        id: createId(),
-        type,
-        level: normalizeLevel(item?.level || context.level),
-        headline: String(item?.headline || item?.english || ""),
-        chinese: String(item?.chinese || (type === "custom" ? context.customTopic : "")),
-        phonetic: String(item?.phonetic || ""),
-        scene: String(item?.scene || ""),
-        example: String(item?.example || ""),
-        summary: String(item?.summary || ""),
-        takeaway: String(item?.takeaway || ""),
-        keywords: Array.isArray(item?.keywords) ? item.keywords.map((v) => String(v)) : [],
-        source: "doubao"
-      };
-      if ((type === "spoken" || type === "vocabulary") && base.level < 2) {
-        base.level = 2;
-      }
-      if ((type === "finance" || type === "ai_news") && !isLikelyDailyNewsItem(base)) {
-        return buildNewsFallbackItem(type, index);
-      }
-      if (!base.headline) {
-        if (type === "custom") {
-          return buildCustomTopicItem(context.customTopic, context.level, index);
-        }
-        if (type === "finance" || type === "ai_news") {
-          return buildNewsFallbackItem(type, index);
-        }
-        return pickCuratedItem(type, context.level);
-      }
-      return base;
-    });
-
-  if (resultItems.length < context.dailyCount) {
-    for (let i = resultItems.length; i < context.dailyCount; i += 1) {
-      const fallbackType = context.types[i % context.types.length];
-      resultItems.push(
-        fallbackType === "custom"
-          ? buildCustomTopicItem(context.customTopic, context.level, i)
-          : (fallbackType === "finance" || fallbackType === "ai_news")
-            ? buildNewsFallbackItem(fallbackType, i)
-          : pickCuratedItem(fallbackType, context.level)
-      );
-    }
-  }
-
-  const questions = quizQuestions.slice(0, 5).map((q, index) => ({
-    id: String(q?.id || createId()),
-    type: q?.type === "choice" ? "choice" : "text",
-    prompt: String(q?.prompt || ""),
-    answer: String(q?.answer || ""),
-    options: Array.isArray(q?.options)
-      ? [...new Set([String(q?.answer || ""), ...q.options.map((o) => String(o))])].filter(Boolean).slice(0, 4)
-      : null,
-    hint: String(q?.hint || "")
-  })).filter((q) => q.prompt && q.answer);
-
-  return {
-    items: resultItems,
-    quiz: questions.length ? { questions } : null
-  };
-}
-
-function isLikelyDailyNewsItem(item) {
-  const text = `${item.headline || ""} ${item.summary || ""} ${item.takeaway || ""}`.toLowerCase();
-  const hasTodayHint = /今日|today|24小时|latest|刚刚|快讯|breaking/.test(text);
-  const hasTimeHint = /\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[:：]\d{2}|月\d{1,2}日/.test(text);
-  const hasSourceHint = /路透|彭博|华尔街见闻|新华社|财新|ft|reuters|bloomberg|wsj|techcrunch|the verge|openai|anthropic|google|meta/.test(text);
-  return (hasTodayHint || hasTimeHint) && hasSourceHint;
+  return items.map(normalizeContentItem);
 }
 
 function pickCuratedItem(type, level) {
@@ -1213,100 +624,7 @@ function buildCustomTopicItem(topic, level, index) {
 function buildQuizForSession(session) {
   const reviewItems = session.items.filter((item) => TYPE_META[item.type]?.reviewEligible).slice(0, 5);
   return {
-    questions: reviewItems.map((item, index) => buildChoiceQuestion(session.id, item, index))
-  };
-}
-
-function buildChoiceQuestion(sessionId, item, index) {
-  const variant = index % 3;
-  const id = `${sessionId}-${index + 1}`;
-
-  if (item.type === "spoken") {
-    const spokenPool = contentPool.filter((entry) => entry.type === "spoken");
-    const chineseDistractors = shuffle(
-      spokenPool
-        .filter((entry) => normalizeLoose(entry.chinese) !== normalizeLoose(item.chinese))
-        .map((entry) => entry.chinese)
-    ).slice(0, 3);
-    const englishDistractors = shuffle(
-      spokenPool
-        .filter((entry) => normalizeLoose(entry.headline) !== normalizeLoose(item.headline))
-        .map((entry) => entry.headline)
-    ).slice(0, 3);
-
-    if (variant === 0) {
-      return {
-        id,
-        type: "choice",
-        prompt: `这句口语更贴近哪种中文含义？${item.headline}`,
-        answer: item.chinese,
-        options: shuffle([item.chinese, ...chineseDistractors]),
-        hint: item.scene || ""
-      };
-    }
-
-    if (variant === 1) {
-      return {
-        id,
-        type: "choice",
-        prompt: `这句表达的正确中文翻译是？${item.headline}`,
-        answer: item.chinese,
-        options: shuffle([item.chinese, ...chineseDistractors]),
-        hint: item.scene || ""
-      };
-    }
-
-    return {
-      id,
-      type: "choice",
-      prompt: `根据中文选择更自然的英文表达：${item.chinese}`,
-      answer: item.headline,
-      options: shuffle([item.headline, ...englishDistractors]),
-      hint: item.scene || ""
-    };
-  }
-
-  const vocabularyPool = contentPool.filter((entry) => entry.type === "vocabulary");
-  const chineseDistractors = shuffle(
-    vocabularyPool
-      .filter((entry) => normalizeLoose(entry.chinese) !== normalizeLoose(item.chinese))
-      .map((entry) => entry.chinese)
-  ).slice(0, 3);
-  const englishDistractors = shuffle(
-    vocabularyPool
-      .filter((entry) => normalizeLoose(entry.headline) !== normalizeLoose(item.headline))
-      .map((entry) => entry.headline)
-  ).slice(0, 3);
-
-  if (variant === 0) {
-    return {
-      id,
-      type: "choice",
-      prompt: `“${item.headline}” 的中文意思是什么？`,
-      answer: item.chinese,
-      options: shuffle([item.chinese, ...chineseDistractors]),
-      hint: item.phonetic || ""
-    };
-  }
-
-  if (variant === 1) {
-    return {
-      id,
-      type: "choice",
-      prompt: `根据中文选择正确单词：${item.chinese}`,
-      answer: item.headline,
-      options: shuffle([item.headline, ...englishDistractors]),
-      hint: item.phonetic || ""
-    };
-  }
-
-  return {
-    id,
-    type: "choice",
-    prompt: `补全例句中的单词：${(item.example || "").replace(new RegExp(escapeRegExp(item.headline), "i"), "_____")}`,
-    answer: item.headline,
-    options: shuffle([item.headline, ...englishDistractors]),
-    hint: item.chinese || ""
+    questions: reviewItems.map((item, index) => buildQuestion(session.id, item, index))
   };
 }
 
@@ -1397,12 +715,40 @@ function hasReviewableItems(items) {
   return items.some((item) => TYPE_META[normalizeItemType(item.type)]?.reviewEligible);
 }
 
+function getSchedulerDateParts(now = new Date()) {
+  const timezone = process.env.SCHEDULER_TIMEZONE || process.env.APP_TIMEZONE || "Asia/Shanghai";
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).formatToParts(now);
+    const pick = (type) => parts.find((part) => part.type === type)?.value || "";
+    const y = pick("year");
+    const m = pick("month");
+    const d = pick("day");
+    const hh = pick("hour");
+    const mm = pick("minute");
+    if (y && m && d && hh && mm) {
+      return { dateKey: `${y}-${m}-${d}`, time: `${hh}:${mm}` };
+    }
+  } catch {}
+  return {
+    dateKey: formatDateKey(now),
+    time: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
+  };
+}
+
 function runSchedulerCheck() {
-  const now = new Date();
-  const minuteKey = `${formatDateKey(now)} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const parts = getSchedulerDateParts(new Date());
+  const minuteKey = `${parts.dateKey} ${parts.time}`;
   if (schedulerMinuteKey === minuteKey) return;
   schedulerMinuteKey = minuteKey;
-  const currentTime = minuteKey.slice(-5);
+  const currentTime = parts.time;
 
   Object.values(store.users).forEach((user) => {
     if (user.preferences.sendTime === currentTime) {
@@ -1595,6 +941,13 @@ function renderMorningEmail(session, email) {
     action: "complete",
     redirect: `/today?email=${encodeURIComponent(email)}`
   });
+  const dashboardUrl = buildTrackedLink(baseUrl, {
+    email,
+    sessionId: session.id,
+    slot: "morning",
+    action: "dashboard",
+    redirect: `/today?email=${encodeURIComponent(email)}`
+  });
   const pixelUrl = `${baseUrl}/api/email-open?email=${encodeURIComponent(email)}&sessionId=${encodeURIComponent(session.id)}&slot=morning`;
 
   const itemsHtml = session.items
@@ -1618,6 +971,7 @@ function renderMorningEmail(session, email) {
         ${itemsHtml}
         <div style="margin-top:24px;">
           <a href="${completeUrl}" style="display:inline-block;margin-right:12px;padding:14px 20px;background:linear-gradient(90deg,#FF3AF2,#7B2FFF,#00F5D4);border:4px solid #FFE600;border-radius:999px;color:#ffffff;font-weight:800;text-decoration:none;">完成今日学习</a>
+          <a href="${dashboardUrl}" style="display:inline-block;padding:14px 20px;background:#24124b;border:4px dashed #00F5D4;border-radius:999px;color:#ffffff;font-weight:800;text-decoration:none;">打开学习面板</a>
         </div>
         <p style="margin:20px 0 0;color:#c4b5fd;">${session.reviewEligible ? "如果你开启了晚间复盘，系统会在设定时间发送测试。" : "本次内容不包含英语复盘，适合做轻量输入学习。"}</p>
       </div>
@@ -1730,9 +1084,7 @@ function normalizeStore(rawStore) {
       email,
       preferences: normalizePreferences({ ...user?.preferences, email }),
       sessions: Array.isArray(user?.sessions) ? user.sessions : [],
-      currentLevel: Number(user?.currentLevel || 1),
-      pet: normalizePet({ ...user?.pet, name: user?.pet?.name || user?.preferences?.petName }),
-      wrongBook: normalizeWrongBook(user?.wrongBook)
+      currentLevel: Number(user?.currentLevel || 1)
     };
   });
 
@@ -1749,38 +1101,12 @@ function normalizePreferences(input) {
     dailyCount: normalizeDailyCount(input?.dailyCount ?? input?.lessonCount),
     learningTypes,
     customTopic: String(input?.customTopic || "").trim(),
-    petName: normalizePetName(input?.petName),
     sendTime: validTime(String(input?.sendTime || input?.morningTime || "")) || "07:30",
     reviewEnabled,
     reviewTime: validTime(String(input?.reviewTime || input?.eveningTime || "")) || "20:30",
     backupChannel: normalizeBackupChannel(input?.backupChannel),
     backupContact: String(input?.backupContact || "").trim()
   };
-}
-
-function normalizePet(input) {
-  return {
-    name: normalizePetName(input?.name),
-    age: Math.max(1, Number(input?.age || 1))
-  };
-}
-
-function normalizeWrongBook(entries) {
-  return (Array.isArray(entries) ? entries : [])
-    .map((entry) => ({
-      id: String(entry?.id || createId()),
-      date: String(entry?.date || formatDateKey(new Date())),
-      sessionId: String(entry?.sessionId || ""),
-      type: normalizeItemType(entry?.type),
-      prompt: String(entry?.prompt || ""),
-      answer: String(entry?.answer || ""),
-      correctAnswer: String(entry?.correctAnswer || ""),
-      hint: String(entry?.hint || ""),
-      wrongCount: Math.max(1, Number(entry?.wrongCount || 1)),
-      lastWrongAt: String(entry?.lastWrongAt || new Date().toISOString())
-    }))
-    .filter((entry) => entry.prompt && entry.correctAnswer)
-    .sort((a, b) => new Date(b.lastWrongAt || 0).getTime() - new Date(a.lastWrongAt || 0).getTime());
 }
 
 function normalizeContentPool(items) {
@@ -1844,15 +1170,7 @@ function normalizeSession(session) {
           total: Number(session.quizResult.total || 0),
           accuracy: Number(session.quizResult.accuracy || 0),
           answers: Array.isArray(session.quizResult.answers) ? session.quizResult.answers : [],
-          wrongItems: Array.isArray(session.quizResult.wrongItems)
-            ? session.quizResult.wrongItems.map((item) => ({
-                id: String(item?.id || createId()),
-                prompt: String(item?.prompt || ""),
-                answer: String(item?.answer || ""),
-                correctAnswer: String(item?.correctAnswer || ""),
-                hint: String(item?.hint || "")
-              }))
-            : []
+          wrongItems: Array.isArray(session.quizResult.wrongItems) ? session.quizResult.wrongItems : []
         }
       : null,
     delivery: {
@@ -1909,12 +1227,7 @@ function seedContent() {
     { id: "finance-2", type: "finance", level: 1, headline: "Oil prices cool as traders reassess demand outlook", chinese: "交易员重新评估需求前景，油价回落", summary: "能源价格波动往往会传导到运输、制造与通胀预期。", takeaway: "阅读财经新闻时，先抓住“价格变化 + 原因 + 影响对象”三件事。", keywords: ["大宗商品", "通胀"] },
     { id: "finance-3", type: "finance", level: 2, headline: "Central bank signals patience on the next policy move", chinese: "央行释放观望信号，下一步政策动作更趋谨慎", summary: "利率路径不确定时，市场会更关注措辞、就业和通胀数据。", takeaway: "遇到政策类报道，重点看“是否超预期”和“未来路径”。", keywords: ["利率", "宏观政策"] },
     { id: "finance-4", type: "finance", level: 2, headline: "Consumer spending stays firm despite softer confidence", chinese: "消费者信心走弱，但消费支出仍有韧性", summary: "情绪指标与真实支出并不总是同步，零售数据更能体现短期韧性。", takeaway: "看经济新闻时，区分“情绪调查”和“真实数据”很重要。", keywords: ["消费", "零售"] },
-    { id: "finance-5", type: "finance", level: 3, headline: "Earnings guidance, not headline profit, drives stock reactions", chinese: "真正驱动股价反应的，常常不是利润本身，而是业绩指引", summary: "财报解读需要同时关注营收、利润率和管理层对未来季度的预期。", takeaway: "高阶阅读财经新闻时，要训练自己从“结果”转向“预期差”。", keywords: ["财报", "预期差"] },
-    { id: "ai-1", type: "ai_news", level: 1, headline: "A new open-source reasoning model reaches strong benchmark gains", chinese: "新开源推理模型在多项基准取得明显提升", summary: "团队通过数据清洗和训练策略优化，提升了长链推理与工具调用稳定性。", takeaway: "关注模型更新时，优先看“能力提升点 + 成本变化 + 可落地场景”。", keywords: ["开源模型", "推理能力"] },
-    { id: "ai-2", type: "ai_news", level: 1, headline: "AI coding assistants add deeper repository-level context", chinese: "AI 编程助手开始支持更深的仓库级上下文理解", summary: "新能力可基于项目结构、历史改动和依赖关系给出更完整的修改建议。", takeaway: "评估效率工具时，重点比较“上下文理解深度”和“改动可控性”。", keywords: ["AI编程", "工程效率"] },
-    { id: "ai-3", type: "ai_news", level: 2, headline: "Multimodal agents move from demo to workflow automation", chinese: "多模态智能体从演示阶段走向工作流自动化", summary: "企业开始把图像、文本和表格任务串成端到端流程，并加入审核机制。", takeaway: "落地智能体项目时，要先设计人机协同和异常回退机制。", keywords: ["智能体", "自动化"] },
-    { id: "ai-4", type: "ai_news", level: 2, headline: "Inference optimization cuts serving latency for medium models", chinese: "推理优化方案降低中等规模模型在线延迟", summary: "通过 KV 缓存管理和批处理策略，服务端响应速度和成本得到平衡。", takeaway: "AI 系统优化常是“性能、成本、质量”三角权衡。", keywords: ["推理优化", "延迟"] },
-    { id: "ai-5", type: "ai_news", level: 3, headline: "Regulators publish draft principles for high-risk AI applications", chinese: "监管机构发布高风险 AI 应用治理原则草案", summary: "草案强调透明度、可追溯性与人工复核责任，对企业合规提出新要求。", takeaway: "做 AI 产品时，应提前把合规与审计能力纳入架构设计。", keywords: ["AI治理", "合规"] }
+    { id: "finance-5", type: "finance", level: 3, headline: "Earnings guidance, not headline profit, drives stock reactions", chinese: "真正驱动股价反应的，常常不是利润本身，而是业绩指引", summary: "财报解读需要同时关注营收、利润率和管理层对未来季度的预期。", takeaway: "高阶阅读财经新闻时，要训练自己从“结果”转向“预期差”。", keywords: ["财报", "预期差"] }
   ];
 }
 
@@ -1928,9 +1241,6 @@ function itemToEmailSummary(item) {
   if (item.type === "finance") {
     return `${item.chinese}｜摘要：${item.summary}｜启发：${item.takeaway}`;
   }
-  if (item.type === "ai_news") {
-    return `${item.chinese}｜要点：${item.summary}｜启发：${item.takeaway}`;
-  }
   return `${item.summary}｜启发：${item.takeaway}`;
 }
 
@@ -1942,9 +1252,6 @@ function itemToTextSummary(item) {
     return `${item.headline} | ${item.chinese} | ${item.scene}`;
   }
   if (item.type === "finance") {
-    return `${item.headline} | ${item.chinese} | ${item.summary}`;
-  }
-  if (item.type === "ai_news") {
     return `${item.headline} | ${item.chinese} | ${item.summary}`;
   }
   return `${item.headline} | ${item.summary}`;
@@ -1962,16 +1269,10 @@ function normalizeEmail(value) {
   return String(value || "").trim();
 }
 
-function normalizePetName(value) {
-  const clean = String(value || "").trim();
-  if (!clean) return "小闪电";
-  return clean.slice(0, 20);
-}
-
 function normalizeDailyCount(value) {
-  const count = Number(value || 5);
-  if (Number.isNaN(count)) return 5;
-  return Math.max(5, Math.min(10, count));
+  const count = Number(value || 3);
+  if (Number.isNaN(count)) return 3;
+  return Math.max(1, Math.min(6, count));
 }
 
 function normalizeLearningTypes(value) {
@@ -1984,13 +1285,13 @@ function normalizeLearningTypes(value) {
   const mapped = raw.flatMap((entry) => {
     const clean = String(entry || "").trim();
     if (!clean) return [];
-    if (clean === "all") return ["spoken", "vocabulary", "finance", "ai_news"];
+    if (clean === "all") return ["vocabulary", "spoken", "finance"];
     const mappedType = LEGACY_TYPE_MAP[clean];
     return mappedType ? [mappedType] : [];
   });
 
   const unique = [...new Set(mapped)];
-  return unique.length ? unique : ["spoken"];
+  return unique.length ? unique : ["vocabulary"];
 }
 
 function normalizeItemType(type) {

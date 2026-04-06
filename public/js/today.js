@@ -59,7 +59,7 @@
     var items = session && Array.isArray(session.items) ? session.items : [];
     refs.todayItemsCard.hidden = false;
     if (!items.length) {
-      refs.todayItems.innerHTML = '<div class="empty">当前还没有可展示的学习内容。先点击“发送今日内容”生成并推送。</div>';
+      refs.todayItems.innerHTML = '<div class="empty">当前还没有可展示的学习内容，先点击“发送今日内容”。</div>';
       return;
     }
     refs.todayItems.innerHTML = items.map(function (item, index) {
@@ -89,6 +89,12 @@
       quizUi.sessionId = sid;
       quizUi.activeIndex = 0;
       quizUi.answers = {};
+      var oldAnswers = session && session.quizResult && Array.isArray(session.quizResult.answers) ? session.quizResult.answers : [];
+      oldAnswers.forEach(function (answerItem) {
+        if (answerItem && answerItem.questionId) {
+          quizUi.answers[answerItem.questionId] = String(answerItem.answer || "");
+        }
+      });
     }
     if (quizUi.activeIndex >= questions.length) {
       quizUi.activeIndex = Math.max(0, questions.length - 1);
@@ -111,35 +117,35 @@
       var checked = selected === option ? ' checked' : "";
       return [
         '<label class="quiz-option">',
-        '<input type="radio" name="quiz-active" data-question-id="' + DLA.escapeHtml(active.id) + '" value="' + DLA.escapeHtml(option) + '"' + checked + (submitted ? " disabled" : "") + ">",
+        '<input type="radio" name="quiz-active" data-question-id="' + DLA.escapeHtml(active.id) + '" value="' + DLA.escapeHtml(option) + '"' + checked + ">",
         '<span class="quiz-option-key">' + String.fromCharCode(65 + optionIdx) + "</span>",
         '<span>' + DLA.escapeHtml(option) + "</span>",
         "</label>"
       ].join("");
     }).join("");
 
-    var dots = questions.map(function (q, idx) {
-      var answered = quizUi.answers[q.id] ? " is-answered" : "";
+    var dots = questions.map(function (question, idx) {
+      var answered = quizUi.answers[question.id] ? " is-answered" : "";
       var activeClass = idx === quizUi.activeIndex ? " is-active" : "";
-      return '<button type="button" class="quiz-dot' + answered + activeClass + '" data-quiz-index="' + idx + '"' + (submitted ? " disabled" : "") + ">" + (idx + 1) + "</button>";
+      return '<button type="button" class="quiz-dot' + answered + activeClass + '" data-quiz-index="' + idx + '">' + (idx + 1) + "</button>";
     }).join("");
 
     refs.quizForm.innerHTML = [
       '<div class="quiz-shell">',
       '<div class="quiz-head">',
       '<div class="tiny">第 <b>' + (quizUi.activeIndex + 1) + "</b> / " + questions.length + " 题</div>",
-      submitted ? '<div class="tiny ok">本次已提交</div>' : '<div class="tiny">单选题</div>',
+      submitted ? '<div class="tiny ok">已提交过，可再次作答（覆盖最新结果）</div>' : '<div class="tiny">单选题</div>',
       "</div>",
       '<div class="quiz-question">' + DLA.escapeHtml(active.prompt || "") + "</div>",
       '<div class="quiz-options">' + options + "</div>",
       '<div class="quiz-nav-actions">',
-      '<button type="button" class="btn btn-alt" data-quiz-nav="prev"' + (quizUi.activeIndex <= 0 || submitted ? " disabled" : "") + '><span>上一题</span></button>',
-      '<button type="button" class="btn btn-alt" data-quiz-nav="next"' + (quizUi.activeIndex >= questions.length - 1 || submitted ? " disabled" : "") + '><span>下一题</span></button>',
-      '<button class="btn" type="submit"' + (submitted ? " disabled" : "") + '><span>提交复习结果</span></button>',
+      '<button type="button" class="btn btn-alt" data-quiz-nav="prev"' + (quizUi.activeIndex <= 0 ? " disabled" : "") + '><span>上一题</span></button>',
+      '<button type="button" class="btn btn-alt" data-quiz-nav="next"' + (quizUi.activeIndex >= questions.length - 1 ? " disabled" : "") + '><span>下一题</span></button>',
+      '<button class="btn" type="submit"><span>提交复习结果</span></button>',
       "</div>",
       '<div class="quiz-pager">' + dots + "</div>",
       submitted && session.quizResult
-        ? ('<div class="list-item"><div class="ok">得分：' + session.quizResult.score + "/" + session.quizResult.total + "（" + session.quizResult.accuracy + "%）</div></div>")
+        ? ('<div class="list-item"><div class="ok">最近一次得分：' + session.quizResult.score + "/" + session.quizResult.total + "（" + session.quizResult.accuracy + "%）</div></div>")
         : "",
       "</div>"
     ].join("");
@@ -148,11 +154,11 @@
   function renderQuizWrong(session) {
     var wrongItems = session && session.quizResult && Array.isArray(session.quizResult.wrongItems) ? session.quizResult.wrongItems : [];
     if (!wrongItems.length) {
-      refs.quizWrong.innerHTML = '<div class="empty">本次复习无错题，继续保持。</div>';
+      refs.quizWrong.innerHTML = '<div class="empty">最近一次作答没有错题。</div>';
       return;
     }
     refs.quizWrong.innerHTML = [
-      '<article class="list-item"><strong>本次错题</strong></article>',
+      '<article class="list-item"><strong>最近一次错题</strong></article>',
       wrongItems.map(function (item, idx) {
         return [
           '<article class="list-item">',
@@ -206,7 +212,7 @@
     refs.sendMorningBtn.disabled = !state || !state.profile;
     refs.sendEveningBtn.disabled = !isCurrent;
     refs.completeBtn.title = isCurrent ? "" : "历史记录仅供查看";
-    refs.sendEveningBtn.title = isCurrent ? "" : "只能对当日学习发送晚间复习";
+    refs.sendEveningBtn.title = isCurrent ? "" : "只允许对当日学习发送晚间复习";
   }
 
   async function loadStateWithRestore() {
@@ -265,7 +271,7 @@
   async function sendEvening() {
     var session = getSessionFromState();
     if (!isCurrentSession(session)) {
-      DLA.showToast("只能对当日学习发送晚间复习。");
+      DLA.showToast("只允许对当日学习发送晚间复习。");
       return;
     }
     refs.sendEveningBtn.disabled = true;
@@ -288,10 +294,6 @@
     var sessionId = session ? session.id : "";
     var questions = session && session.quiz && Array.isArray(session.quiz.questions) ? session.quiz.questions : [];
     if (!sessionId || !questions.length) return;
-    if (session && session.quizResult && session.quizResult.submittedAt) {
-      DLA.showToast("您今日已经提交过答案了，请明天再来吧");
-      return;
-    }
 
     var answers = questions.map(function (question) {
       return quizUi.answers[question.id] || "";
@@ -382,7 +384,7 @@
         if (restored && restored.profile) state = restored;
         DLA.cacheState(email, state);
         render();
-        DLA.showToast("当前使用本机缓存记录，已尝试自动恢复。");
+        DLA.showToast("当前使用本地缓存记录，已尝试自动恢复。");
       } else {
         DLA.showToast(error.message || "加载失败");
         renderMissing();
