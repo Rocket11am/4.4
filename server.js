@@ -17,6 +17,7 @@ const ARK_API_KEY = String(process.env.ARK_API_KEY || "").trim();
 const ARK_BASE_URL = String(process.env.ARK_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3").trim().replace(/\/$/, "");
 const ARK_MODEL = String(process.env.ARK_MODEL || process.env.ARK_ENDPOINT_ID || "").trim();
 const ARK_TIMEOUT_MS = Number(process.env.ARK_TIMEOUT_MS || 45000);
+let ENGLISH_LIBRARY_POOL = [];
 
 const TYPE_META = {
   spoken: { label: "地道口语表达", reviewEligible: true, accent: "#00F5D4" },
@@ -40,6 +41,8 @@ const LEGACY_TYPE_MAP = {
   travel: "spoken",
   writing: "spoken"
 };
+
+ENGLISH_LIBRARY_POOL = buildEnglishLibraryPool();
 
 ensureDir(DATA_DIR);
 ensureFile(CONTENT_PATH, JSON.stringify(seedContent(), null, 2));
@@ -195,6 +198,7 @@ function buildClientState(email) {
     profile: user
       ? {
           email: user.email,
+          petName: user.preferences.petName,
           dailyCount: user.preferences.dailyCount,
           learningTypes: user.preferences.learningTypes,
           customTopic: user.preferences.customTopic,
@@ -206,6 +210,7 @@ function buildClientState(email) {
         }
       : null,
     stats,
+    pet: user ? buildPetState(user, sessions, stats) : null,
     activeSession,
     history: sessions.slice(0, 12),
     timeline: buildTimeline(sessions),
@@ -321,6 +326,32 @@ function computeStreak(completedSessions) {
   return streak;
 }
 
+function buildPetState(user, sessions, stats) {
+  const streak = Number(stats?.streak || 0);
+  const growthLevel = Math.max(1, 1 + Math.floor(streak / 10));
+  const stage = growthLevel >= 3 ? "legend" : growthLevel >= 2 ? "spark" : "seed";
+  const stageLabel = stage === "legend" ? "像素终极体" : stage === "spark" ? "像素进化体" : "像素幼宠";
+  const progressDays = streak % 10;
+  const todayKey = formatDateKey(new Date());
+  const fedToday = sessions.some((session) => session.date === todayKey && session.completedAt);
+  const lifetimeFeeds = sessions.filter((session) => Boolean(session.completedAt)).length;
+  const daysToNextLevel = progressDays === 0 ? 10 : (10 - progressDays);
+  const petName = String(user?.preferences?.petName || "小闪电").trim() || "小闪电";
+
+  return {
+    name: petName,
+    stage,
+    stageLabel,
+    age: growthLevel,
+    level: growthLevel,
+    progressDays,
+    daysToNextLevel,
+    fedToday,
+    lifetimeFeeds,
+    mood: fedToday ? "今天吃饱了，状态很棒" : "等待投喂"
+  };
+}
+
 function deriveDifficultyLevel(user) {
   const sessions = sortSessions(user.sessions)
     .map(normalizeSession)
@@ -373,7 +404,7 @@ async function sendMorningLesson(email, mode) {
     session = await createSession(user, mode);
     user.sessions.push(session);
   } else if (mode === "manual") {
-    const regenerated = await buildDailyContent(user.preferences, deriveDifficultyLevel(user));
+    const regenerated = await buildDailyContent(user, deriveDifficultyLevel(user));
     session.items = regenerated.items;
     session.generationMode = regenerated.generationMode;
     session.reviewEligible = hasReviewableItems(regenerated.items);
@@ -551,7 +582,7 @@ function submitQuiz(payload) {
 async function createSession(user, mode) {
   const now = new Date();
   const difficultyLevel = deriveDifficultyLevel(user);
-  const generated = await buildDailyContent(user.preferences, difficultyLevel);
+  const generated = await buildDailyContent(user, difficultyLevel);
   const items = generated.items;
   const session = {
     id: createId(),
@@ -578,19 +609,79 @@ async function createSession(user, mode) {
   return session;
 }
 
-async function buildDailyContent(preferences, level) {
+async function buildDailyContent(user, level) {
+  const preferences = user.preferences || {};
   const types = normalizeLearningTypes(preferences.learningTypes);
   const count = normalizeDailyCount(preferences.dailyCount);
+  const sequence = buildTypeSequence(types, count);
+  const usedItems = [];
+  const recentItems = collectRecentItems(user, 60);
+  const nonEnglishTypes = [...new Set(sequence.filter((type) => !isEnglishType(type)))];
+  const nonEnglishCount = sequence.filter((type) => !isEnglishType(type)).length;
+  const aiResult = nonEnglishCount
+    ? await generateDailyContentWithArk({ ...preferences, learningTypes: nonEnglishTypes }, level, nonEnglishCount)
+    : { ok: false, items: [] };
+  const aiPools = new Map();
+  dedupeContentItems(aiResult.items || []).forEach((item) => {
+    const type = normalizeItemType(item.type);
+    if (!aiPools.has(type)) aiPools.set(type, []);
+    aiPools.get(type).push(item);
+  });
 
-  const aiResult = await generateDailyContentWithArk(preferences, level, count);
-  const uniqueItems = dedupeContentItems(aiResult.items || []);
-  const fallbackItems = buildFallbackItems(preferences, level, count, uniqueItems);
-  const mergedItems = dedupeContentItems([...uniqueItems, ...fallbackItems]).slice(0, count);
+  for (const type of sequence) {
+    let picked = null;
+    if (isEnglishType(type)) {
+      picked = pickCuratedItem(type, level, [...recentItems, ...usedItems]);
+    } else {
+      picked = takeAiItemByType(type, aiPools, [...recentItems, ...usedItems]);
+      if (!picked) {
+        picked = buildSyntheticItem(type, preferences.customTopic, level, usedItems.length + 1);
+      }
+    }
+    if (!picked) continue;
+    const key = itemUniqKey(picked);
+    if (!key) continue;
+    if ([...recentItems, ...usedItems].some((item) => itemUniqKey(item) === key)) continue;
+    usedItems.push(picked);
+  }
+
+  const fallbackItems = buildFallbackItems(preferences, level, count, [...recentItems, ...usedItems]);
+  const mergedItems = dedupeContentItems([...usedItems, ...fallbackItems]).slice(0, count);
 
   return {
     items: mergedItems.map(normalizeContentItem),
-    generationMode: aiResult.ok ? "ai+fallback" : "curated-fallback"
+    generationMode: nonEnglishCount ? (aiResult.ok ? "mixed-library+ai" : "mixed-library+fallback") : "library"
   };
+}
+
+function buildTypeSequence(types, count) {
+  const sequence = [];
+  for (let index = 0; index < count; index += 1) {
+    sequence.push(types[index % types.length]);
+  }
+  return sequence;
+}
+
+function collectRecentItems(user, maxItems) {
+  const sessions = sortSessions(Array.isArray(user?.sessions) ? user.sessions : [])
+    .map(normalizeSession)
+    .slice(0, Math.max(1, Number(maxItems || 60)));
+  return sessions.flatMap((session) => Array.isArray(session.items) ? session.items : []);
+}
+
+function isEnglishType(type) {
+  return type === "spoken" || type === "vocabulary";
+}
+
+function takeAiItemByType(type, pools, usedItems = []) {
+  const pool = Array.isArray(pools?.get(type)) ? pools.get(type) : [];
+  if (!pool.length) return null;
+  const usedKeys = new Set((Array.isArray(usedItems) ? usedItems : []).map(itemUniqKey));
+  for (let index = 0; index < pool.length; index += 1) {
+    const item = pool[index];
+    if (!usedKeys.has(itemUniqKey(item))) return item;
+  }
+  return null;
 }
 
 function buildFallbackItems(preferences, level, targetCount, existingItems = []) {
@@ -635,7 +726,11 @@ function buildFallbackItems(preferences, level, targetCount, existingItems = [])
 }
 
 function pickCuratedItem(type, level, usedItems = []) {
-  const fallback = contentPool.filter((item) => item.type === type);
+  const basePool = contentPool.filter((item) => item.type === type);
+  const extendedPool = isEnglishType(type)
+    ? dedupeContentItems([...basePool, ...ENGLISH_LIBRARY_POOL.filter((item) => item.type === type)])
+    : basePool;
+  const fallback = extendedPool;
   const preferred = fallback.filter((item) => item.level === level);
   const source = preferred.length ? preferred : fallback.length ? fallback : contentPool;
   const usedKeys = new Set((Array.isArray(usedItems) ? usedItems : []).map(itemUniqKey));
@@ -1273,13 +1368,7 @@ function renderMorningEmail(session, email) {
 
   const itemsHtml = orderedItems
     .map(
-      (item, index) => `
-        <div style="margin-bottom:10px;padding:10px 12px;border-radius:18px;background:#ffffff;border:3px solid ${TYPE_META[item.type]?.accent || "#FF3AF2"};">
-          <div style="font-size:12px;font-weight:700;color:#6b21a8;line-height:1.3;margin:0 0 4px;">${escapeHtml(labelForType(item.type))}</div>
-          <div style="font-weight:800;font-size:17px;line-height:1.35;margin:0 0 4px;">${index + 1}. ${escapeHtml(item.headline)}</div>
-          <div style="color:#111827;line-height:1.55;margin:0;">${escapeHtml(itemToEmailSummary(item))}</div>
-        </div>
-      `
+      (item, index) => `<div style="margin:0 0 8px;padding:8px 10px;border-radius:16px;background:#ffffff;border:3px solid ${TYPE_META[item.type]?.accent || "#FF3AF2"};"><div style="font-size:12px;font-weight:700;color:#6b21a8;line-height:1.25;margin:0 0 3px;">${escapeHtml(labelForType(item.type))}</div><div style="font-weight:800;font-size:16px;line-height:1.3;margin:0 0 3px;">${index + 1}. ${escapeHtml(item.headline)}</div><div style="color:#111827;line-height:1.45;margin:0;">${escapeHtml(itemToEmailSummary(item))}</div></div>`
     )
     .join("");
 
@@ -1421,6 +1510,7 @@ function normalizePreferences(input) {
     dailyCount: normalizeDailyCount(input?.dailyCount ?? input?.lessonCount),
     learningTypes,
     customTopic: String(input?.customTopic || "").trim(),
+    petName: normalizePetName(input?.petName),
     sendTime: validTime(String(input?.sendTime || input?.morningTime || "")) || "07:30",
     reviewEnabled,
     reviewTime: validTime(String(input?.reviewTime || input?.eveningTime || "")) || "20:30",
@@ -1452,6 +1542,12 @@ function normalizeContentItem(item) {
     sourceName: String(item?.sourceName || ""),
     sourceUrl: String(item?.sourceUrl || "")
   };
+}
+
+function normalizePetName(value) {
+  const name = String(value || "").trim();
+  if (!name) return "小闪电";
+  return name.slice(0, 20);
 }
 
 function normalizeSession(session) {
@@ -1515,6 +1611,96 @@ function normalizeDelivery(delivery) {
     clickedAt: delivery.clickedAt || null,
     mode: String(delivery.mode || "smtp")
   };
+}
+
+function buildEnglishLibraryPool() {
+  const spokenPairs = [
+    ["Let's align on priorities before we start.", "开始前先对齐优先级。", "会议开场对齐目标", "Let's align on priorities before we start so we can execute faster."],
+    ["Can we zoom in on the key blocker?", "我们可以聚焦到关键阻碍点吗？", "讨论卡点时", "Can we zoom in on the key blocker before discussing the rest?"],
+    ["I want to stress-test this plan.", "我想把这个方案做压力测试。", "评估方案风险时", "I want to stress-test this plan against a worst-case scenario."],
+    ["Could you walk me through your reasoning?", "你可以讲讲你的思路吗？", "请对方解释逻辑时", "Could you walk me through your reasoning step by step?"],
+    ["This approach doesn't scale well.", "这个方法扩展性不太好。", "评估长期方案时", "This approach doesn't scale well once traffic doubles."],
+    ["Let's keep this on the radar.", "这个事情先持续关注。", "暂不处理但需跟进", "Let's keep this on the radar and revisit next week."],
+    ["We should de-risk this first.", "我们应该先把这个风险降下来。", "执行前风险管理", "We should de-risk this first before rolling it out widely."],
+    ["Can we tighten the timeline?", "我们可以把时间线再收紧一点吗？", "排期优化时", "Can we tighten the timeline without hurting quality?"],
+    ["I'm not fully convinced yet.", "我目前还没有完全被说服。", "表达保留意见", "I'm not fully convinced yet—can we validate the assumptions?"],
+    ["Let's define the success criteria.", "先定义成功标准。", "制定验收标准", "Let's define the success criteria before implementation."],
+    ["Can we challenge this assumption?", "我们可以挑战一下这个假设吗？", "评审方案假设时", "Can we challenge this assumption with real user data?"],
+    ["Let's keep the scope realistic.", "我们把范围控制在现实可落地的程度。", "范围管理时", "Let's keep the scope realistic for this sprint."],
+    ["I can take ownership of this part.", "这部分我可以负责到底。", "分工认领任务时", "I can take ownership of this part and share updates daily."],
+    ["Could we simplify the workflow?", "我们可以把流程简化一下吗？", "流程过于复杂时", "Could we simplify the workflow to reduce handoffs?"],
+    ["Let's park this for now.", "这个先放一放。", "会议中暂缓议题", "Let's park this for now and revisit after the release."],
+    ["We need a clearer trade-off.", "我们需要更清晰的取舍。", "决策讨论时", "We need a clearer trade-off between speed and quality."],
+    ["I'm concerned about long-term maintenance.", "我担心长期维护成本。", "评估技术方案时", "I'm concerned about long-term maintenance if we choose this path."],
+    ["Can we split this into phases?", "我们可以把这个拆成分阶段推进吗？", "任务拆分时", "Can we split this into phases to reduce launch risk?"],
+    ["Let's validate this with users first.", "我们先用用户验证一下。", "做决策前验证", "Let's validate this with users first before scaling up."],
+    ["This needs tighter execution.", "这个执行还需要更严谨。", "复盘执行质量", "This needs tighter execution and clearer ownership."],
+    ["Could you share the latest status?", "你可以同步一下最新进展吗？", "项目跟进时", "Could you share the latest status before we proceed?"],
+    ["Let's align on expectations.", "我们先统一预期。", "合作启动阶段", "Let's align on expectations for timeline and quality."],
+    ["I suggest we revisit the baseline.", "我建议我们回到基线重新看一下。", "偏离目标时", "I suggest we revisit the baseline before adding more features."],
+    ["Can we make this decision reversible?", "这个决策可以做成可逆的吗？", "高风险决策时", "Can we make this decision reversible in case metrics drop?"]
+  ];
+
+  const vocabBase = [
+    ["differentiate", "/ˌdɪfəˈrenʃieɪt/", "区分；形成差异化", "We need to differentiate this product from competitors."],
+    ["mitigate", "/ˈmɪtɪɡeɪt/", "缓解，减轻", "We introduced safeguards to mitigate operational risk."],
+    ["leverage", "/ˈliːvərɪdʒ/", "利用（资源/优势）", "Let's leverage our existing data assets."],
+    ["feasible", "/ˈfiːzəbəl/", "可行的", "This schedule is ambitious but feasible."],
+    ["robust", "/roʊˈbʌst/", "稳健的", "We need a robust fallback strategy."],
+    ["iterate", "/ˈɪtəreɪt/", "迭代，反复改进", "We'll iterate on the prototype based on feedback."],
+    ["streamline", "/ˈstriːmlaɪn/", "精简，优化流程", "Automation helps streamline repetitive tasks."],
+    ["align", "/əˈlaɪn/", "对齐，一致", "The roadmap must align with business goals."],
+    ["diagnose", "/ˈdaɪəɡnoʊs/", "诊断，定位问题", "We need to diagnose the root cause quickly."],
+    ["validate", "/ˈvælɪdeɪt/", "验证", "Run experiments to validate the hypothesis."],
+    ["clarify", "/ˈklærəfaɪ/", "澄清", "Could you clarify the expected output format?"],
+    ["escalate", "/ˈeskəleɪt/", "升级处理", "Please escalate this issue if it blocks release."],
+    ["prioritize", "/praɪˈɔːrətaɪz/", "确定优先级", "We should prioritize tasks with higher impact."],
+    ["allocate", "/ˈæləkeɪt/", "分配", "Allocate more resources to user testing."],
+    ["synthesize", "/ˈsɪnθəsaɪz/", "综合归纳", "Try to synthesize the findings into three points."],
+    ["quantify", "/ˈkwɑːntɪfaɪ/", "量化", "Can we quantify the potential upside?"],
+    ["benchmark", "/ˈbentʃmɑːrk/", "对标", "Let's benchmark our latency against industry standards."],
+    ["optimize", "/ˈɑːptɪmaɪz/", "优化", "We need to optimize the onboarding flow."],
+    ["orchestrate", "/ˈɔːrkɪstreɪt/", "编排，统筹", "The platform orchestrates multiple services."],
+    ["deploy", "/dɪˈplɔɪ/", "部署", "We will deploy the patch tonight."],
+    ["refine", "/rɪˈfaɪn/", "打磨，改进", "Let's refine the messaging before launch."],
+    ["anticipate", "/ænˈtɪsɪpeɪt/", "预判", "We should anticipate edge cases early."],
+    ["stabilize", "/ˈsteɪbəlaɪz/", "稳定", "This change helps stabilize the system under load."],
+    ["audit", "/ˈɔːdɪt/", "审计", "The team will audit all access logs monthly."],
+    ["comply", "/kəmˈplaɪ/", "遵从", "We must comply with the latest data policy."],
+    ["triage", "/ˈtriːɑːʒ/", "分级处理", "Let's triage incoming bugs by severity."],
+    ["consolidate", "/kənˈsɑːlɪdeɪt/", "整合", "Consolidate duplicate workflows into one pipeline."],
+    ["facilitate", "/fəˈsɪlɪteɪt/", "促进", "The dashboard facilitates faster decision-making."],
+    ["execute", "/ˈeksɪkjuːt/", "执行", "We can execute this plan in two phases."],
+    ["retain", "/rɪˈteɪn/", "留存，保留", "Retention metrics improved after the redesign."]
+  ];
+
+  const spokenItems = spokenPairs.map((row, index) => normalizeContentItem({
+    id: `lib-spoken-${index + 1}`,
+    type: "spoken",
+    level: (index % 3) + 1,
+    headline: row[0],
+    chinese: row[1],
+    scene: row[2],
+    example: row[3],
+    summary: "面向真实工作场景的自然表达。",
+    takeaway: "重点掌握语气和使用时机。",
+    source: "library"
+  }));
+
+  const vocabularyItems = vocabBase.map((row, index) => normalizeContentItem({
+    id: `lib-voc-${index + 1}`,
+    type: "vocabulary",
+    level: (index % 3) + 1,
+    headline: row[0],
+    phonetic: row[1],
+    chinese: row[2],
+    example: row[3],
+    summary: "高频职场英语词汇。",
+    takeaway: "建议搭配固定语块记忆。",
+    source: "library"
+  }));
+
+  return [...spokenItems, ...vocabularyItems];
 }
 
 function seedStore() {

@@ -4,6 +4,7 @@
     heroStreak: document.getElementById("hero-streak"),
     heroRate: document.getElementById("hero-rate"),
     heroNext: document.getElementById("hero-next"),
+    heroEvening: document.getElementById("hero-evening"),
     startNow: document.getElementById("start-now")
   };
 
@@ -21,12 +22,14 @@
       refs.heroStreak.textContent = String(DLA.safeGet(state, ["stats", "streak"], 0)) + " 天";
       refs.heroRate.textContent = String(DLA.safeGet(state, ["stats", "completionRate"], 0)) + "%";
       refs.heroNext.textContent = DLA.safeGet(state, ["profile", "sendTime"], "--:--");
+      refs.heroEvening.textContent = DLA.safeGet(state, ["profile", "reviewTime"], "--:--");
     } catch (error) {
       var cachedState = DLA.loadCachedState(email);
       if (cachedState && cachedState.profile) {
         refs.heroStreak.textContent = String(DLA.safeGet(cachedState, ["stats", "streak"], 0)) + " 天";
         refs.heroRate.textContent = String(DLA.safeGet(cachedState, ["stats", "completionRate"], 0)) + "%";
         refs.heroNext.textContent = DLA.safeGet(cachedState, ["profile", "sendTime"], "--:--");
+        refs.heroEvening.textContent = DLA.safeGet(cachedState, ["profile", "reviewTime"], "--:--");
         return;
       }
       DLA.showToast(error.message || "获取状态失败");
