@@ -17,10 +17,12 @@ const ARK_API_KEY = String(process.env.ARK_API_KEY || "").trim();
 const ARK_BASE_URL = String(process.env.ARK_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3").trim().replace(/\/$/, "");
 const ARK_MODEL = String(process.env.ARK_MODEL || process.env.ARK_ENDPOINT_ID || "").trim();
 const ARK_TIMEOUT_MS = Number(process.env.ARK_TIMEOUT_MS || 45000);
+const CONTENT_GENERATION_MODE = String(process.env.CONTENT_GENERATION_MODE || "library").trim().toLowerCase();
 const KV_REST_URL = String(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || "").trim().replace(/\/$/, "");
 const KV_REST_TOKEN = String(process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
 const STORE_KV_KEY = String(process.env.STORE_KV_KEY || "daily-learning-assistant:store:v1").trim();
 let ENGLISH_LIBRARY_POOL = [];
+let EXTERNAL_LIBRARY_POOL = { spoken: [], vocabulary: [], finance: [], ai_news: [] };
 
 const TYPE_META = {
   spoken: { label: "地道口语表达", reviewEligible: true, accent: "#00F5D4" },
@@ -46,6 +48,7 @@ const LEGACY_TYPE_MAP = {
 };
 
 ENGLISH_LIBRARY_POOL = buildEnglishLibraryPool();
+EXTERNAL_LIBRARY_POOL = loadExternalContentLibraries();
 
 ensureDir(DATA_DIR);
 ensureFile(CONTENT_PATH, JSON.stringify(seedContent(), null, 2));
@@ -643,12 +646,13 @@ async function buildDailyContent(user, level) {
   const preferences = user.preferences || {};
   const types = normalizeLearningTypes(preferences.learningTypes);
   const count = normalizeDailyCount(preferences.dailyCount);
+  const aiGenerationEnabled = CONTENT_GENERATION_MODE === "ai" || CONTENT_GENERATION_MODE === "hybrid";
   const sequence = buildTypeSequence(types, count);
   const usedItems = [];
   const recentItems = collectRecentItems(user, 60);
   const nonEnglishTypes = [...new Set(sequence.filter((type) => !isEnglishType(type)))];
   const nonEnglishCount = sequence.filter((type) => !isEnglishType(type)).length;
-  const aiResult = nonEnglishCount
+  const aiResult = aiGenerationEnabled && nonEnglishCount
     ? await generateDailyContentWithArk({ ...preferences, learningTypes: nonEnglishTypes }, level, nonEnglishCount)
     : { ok: false, items: [] };
   const aiPools = new Map();
@@ -663,7 +667,12 @@ async function buildDailyContent(user, level) {
     if (isEnglishType(type)) {
       picked = pickCuratedItem(type, level, [...recentItems, ...usedItems]);
     } else {
-      picked = takeAiItemByType(type, aiPools, [...recentItems, ...usedItems]);
+      if (aiGenerationEnabled) {
+        picked = takeAiItemByType(type, aiPools, [...recentItems, ...usedItems]);
+      }
+      if (!picked) {
+        picked = pickCuratedItem(type, level, [...recentItems, ...usedItems]);
+      }
       if (!picked) {
         picked = buildSyntheticItem(type, preferences.customTopic, level, usedItems.length + 1);
       }
@@ -680,7 +689,9 @@ async function buildDailyContent(user, level) {
 
   return {
     items: mergedItems.map(normalizeContentItem),
-    generationMode: nonEnglishCount ? (aiResult.ok ? "mixed-library+ai" : "mixed-library+fallback") : "library"
+    generationMode: aiGenerationEnabled
+      ? (nonEnglishCount ? (aiResult.ok ? "mixed-library+ai" : "mixed-library+fallback") : "library")
+      : "library-files"
   };
 }
 
@@ -757,10 +768,13 @@ function buildFallbackItems(preferences, level, targetCount, existingItems = [])
 
 function pickCuratedItem(type, level, usedItems = []) {
   const basePool = contentPool.filter((item) => item.type === type);
-  const extendedPool = isEnglishType(type)
-    ? dedupeContentItems([...basePool, ...ENGLISH_LIBRARY_POOL.filter((item) => item.type === type)])
-    : basePool;
-  const fallback = extendedPool;
+  const externalPool = Array.isArray(EXTERNAL_LIBRARY_POOL?.[type]) ? EXTERNAL_LIBRARY_POOL[type] : [];
+  const extendedPool = externalPool.length
+    ? dedupeContentItems(externalPool)
+    : (isEnglishType(type)
+      ? dedupeContentItems([...basePool, ...ENGLISH_LIBRARY_POOL.filter((item) => item.type === type)])
+      : basePool);
+  const fallback = extendedPool.length ? extendedPool : basePool;
   const preferred = fallback.filter((item) => item.level === level);
   const source = preferred.length ? preferred : fallback.length ? fallback : contentPool;
   const usedKeys = new Set((Array.isArray(usedItems) ? usedItems : []).map(itemUniqKey));
@@ -1901,6 +1915,89 @@ function buildEnglishLibraryPool() {
   }));
 
   return [...spokenItems, ...vocabularyItems];
+}
+
+function loadExternalContentLibraries() {
+  const result = { spoken: [], vocabulary: [], finance: [], ai_news: [] };
+  try {
+    const spokenRaw = loadJson(path.join(ROOT, "英语口语.json"), []);
+    result.spoken = (Array.isArray(spokenRaw) ? spokenRaw : []).map((row, index) =>
+      normalizeContentItem({
+        id: `file-spoken-${index + 1}`,
+        type: "spoken",
+        level: 2,
+        headline: String(row?.expression || row?.headline || "").trim(),
+        chinese: String(row?.translation || row?.chinese || "").trim(),
+        scene: String(row?.scenario || row?.scene || "").trim(),
+        example: String(row?.example || "").trim(),
+        summary: String(row?.summary || "来自本地口语题库").trim(),
+        takeaway: String(row?.takeaway || "建议结合场景高频复述").trim(),
+        source: "file-library"
+      })
+    ).filter((item) => item.headline);
+  } catch (error) {
+    console.error("[library] 口语题库读取失败", error.message);
+  }
+
+  try {
+    const vocabRaw = loadJson(path.join(ROOT, "单词.json"), []);
+    result.vocabulary = (Array.isArray(vocabRaw) ? vocabRaw : []).map((row, index) =>
+      normalizeContentItem({
+        id: `file-vocab-${index + 1}`,
+        type: "vocabulary",
+        level: 2,
+        headline: String(row?.word || row?.headline || "").trim(),
+        phonetic: String(row?.phonetic || "").trim(),
+        chinese: String(row?.translation || row?.chinese || "").trim(),
+        example: String(row?.example || "").trim(),
+        summary: String(row?.summary || "来自本地单词题库").trim(),
+        takeaway: String(row?.takeaway || "建议结合例句和语块记忆").trim(),
+        source: "file-library"
+      })
+    ).filter((item) => item.headline);
+  } catch (error) {
+    console.error("[library] 单词题库读取失败", error.message);
+  }
+
+  try {
+    const newsRaw = loadJson(path.join(ROOT, "财经和ai咨询.json"), {});
+    const financeRaw = Array.isArray(newsRaw?.finance) ? newsRaw.finance : [];
+    const aiRaw = Array.isArray(newsRaw?.ai) ? newsRaw.ai : [];
+    result.finance = financeRaw.map((row, index) =>
+      normalizeContentItem({
+        id: `file-finance-${index + 1}`,
+        type: "finance",
+        level: 2,
+        headline: String(row?.title || row?.headline || "").trim(),
+        chinese: String(row?.content || row?.chinese || "").trim(),
+        summary: String(row?.summary || row?.content || "").trim(),
+        takeaway: String(row?.takeaway || "建议关注事件成因与影响路径").trim(),
+        happenedAt: formatDateKey(new Date()),
+        sourceName: String(row?.sourceName || "本地财经资讯库").trim(),
+        sourceUrl: String(row?.sourceUrl || "").trim(),
+        source: "file-library"
+      })
+    ).filter((item) => item.headline);
+    result.ai_news = aiRaw.map((row, index) =>
+      normalizeContentItem({
+        id: `file-ai-${index + 1}`,
+        type: "ai_news",
+        level: 2,
+        headline: String(row?.title || row?.headline || "").trim(),
+        chinese: String(row?.content || row?.chinese || "").trim(),
+        summary: String(row?.summary || row?.content || "").trim(),
+        takeaway: String(row?.takeaway || "建议关注技术趋势与商业化进展").trim(),
+        happenedAt: formatDateKey(new Date()),
+        sourceName: String(row?.sourceName || "本地AI资讯库").trim(),
+        sourceUrl: String(row?.sourceUrl || "").trim(),
+        source: "file-library"
+      })
+    ).filter((item) => item.headline);
+  } catch (error) {
+    console.error("[library] 财经/AI题库读取失败", error.message);
+  }
+
+  return result;
 }
 
 function seedStore() {
