@@ -4,6 +4,7 @@ const path = require("path");
 const tls = require("tls");
 const net = require("net");
 const { URL } = require("url");
+const { Redis } = require("@upstash/redis");
 
 const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
@@ -21,6 +22,7 @@ const CONTENT_GENERATION_MODE = String(process.env.CONTENT_GENERATION_MODE || "l
 const KV_REST_URL = String(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || "").trim().replace(/\/$/, "");
 const KV_REST_TOKEN = String(process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
 const STORE_KV_KEY = String(process.env.STORE_KV_KEY || "daily-learning-assistant:store:v1").trim();
+const remoteStoreClient = KV_REST_URL && KV_REST_TOKEN ? new Redis({ url: KV_REST_URL, token: KV_REST_TOKEN }) : null;
 let ENGLISH_LIBRARY_POOL = [];
 let EXTERNAL_LIBRARY_POOL = { spoken: [], vocabulary: [], finance: [], ai_news: [] };
 
@@ -60,6 +62,7 @@ let schedulerMinuteKey = "";
 let storeLoadPromise = null;
 let storeLoaded = false;
 let storePersistPromise = Promise.resolve();
+let lastStoreError = "";
 
 async function requestListener(req, res) {
   try {
@@ -112,6 +115,20 @@ async function handleApi(req, res, url) {
     return;
   }
 
+  if (req.method === "GET" && url.pathname === "/api/store-status") {
+    respondJson(res, 200, {
+      ok: true,
+      store: {
+        remoteEnabled: hasRemoteStore(),
+        key: STORE_KV_KEY,
+        loaded: storeLoaded,
+        userCount: Object.keys(store.users || {}).length,
+        lastError: lastStoreError || null
+      }
+    });
+    return;
+  }
+
   if (req.method === "GET" && url.pathname === "/api/email-open") {
     markDeliveryOpen(url.searchParams.get("email"), url.searchParams.get("sessionId"), url.searchParams.get("slot"));
     res.writeHead(200, {
@@ -143,6 +160,14 @@ async function handleApi(req, res, url) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/profile") {
+    if (process.env.VERCEL && !hasRemoteStore()) {
+      respondJson(res, 500, {
+        ok: false,
+        message: "生产环境未检测到可持久化存储，当前配置不会被可靠保存。请检查 Vercel 环境变量。",
+        store: { enabled: false, lastError: lastStoreError || "missing-kv-config" }
+      });
+      return;
+    }
     const body = await readBody(req);
     const user = upsertUser(body);
     saveStore();
@@ -2298,21 +2323,17 @@ function appendLog(message) {
 }
 
 function hasRemoteStore() {
-  return Boolean(KV_REST_URL && KV_REST_TOKEN);
+  return Boolean(remoteStoreClient);
 }
 
 async function kvGetJson(key) {
   if (!hasRemoteStore()) return null;
-  const response = await fetch(`${KV_REST_URL}/get/${encodeURIComponent(key)}`, {
-    headers: { Authorization: `Bearer ${KV_REST_TOKEN}` }
-  });
-  if (!response.ok) {
-    throw new Error(`KV GET failed: ${response.status}`);
-  }
-  const data = await response.json();
-  if (typeof data?.result !== "string") return null;
+  const data = await remoteStoreClient.get(key);
+  if (data == null) return null;
+  if (typeof data === "object") return data;
+  if (typeof data !== "string") return null;
   try {
-    return JSON.parse(data.result);
+    return JSON.parse(data);
   } catch {
     return null;
   }
@@ -2320,33 +2341,27 @@ async function kvGetJson(key) {
 
 async function kvSetJson(key, value) {
   if (!hasRemoteStore()) return;
-  const response = await fetch(`${KV_REST_URL}/pipeline`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${KV_REST_TOKEN}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify([["SET", key, JSON.stringify(value)]])
-  });
-  if (!response.ok) {
-    throw new Error(`KV SET failed: ${response.status}`);
-  }
+  await remoteStoreClient.set(key, JSON.stringify(value));
 }
 
 function queueRemotePersist(snapshot) {
   if (!hasRemoteStore()) return;
   storePersistPromise = storePersistPromise
     .catch(() => {})
-    .then(() => kvSetJson(STORE_KV_KEY, snapshot))
+    .then(async () => {
+      await kvSetJson(STORE_KV_KEY, snapshot);
+      lastStoreError = "";
+    })
     .catch((error) => {
-      console.error("[store persist]", error.message);
+      lastStoreError = String(error.message || error);
+      throw error;
     });
 }
 
 async function waitForStorePersist(timeoutMs = 3000) {
   if (!hasRemoteStore()) return;
   const timeoutPromise = new Promise((resolve) => setTimeout(resolve, timeoutMs));
-  await Promise.race([storePersistPromise.catch(() => {}), timeoutPromise]);
+  await Promise.race([storePersistPromise, timeoutPromise]);
 }
 
 async function ensureStoreLoaded() {
@@ -2371,9 +2386,11 @@ async function ensureStoreLoaded() {
       }
       saveStore();
       await waitForStorePersist();
+      lastStoreError = "";
       storeLoaded = true;
     } catch (error) {
       console.error("[store load fallback]", error.message);
+      lastStoreError = String(error.message || error);
       store = normalizeStore(loadJson(STORE_PATH, seedStore()));
       storeLoaded = true;
     }

@@ -2,7 +2,7 @@ name: Trigger Vercel Scheduler
 
 on:
   schedule:
-    - cron: "* * * * *"
+    - cron: "*/5 * * * *"
   push:
     branches:
       - main
