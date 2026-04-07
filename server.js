@@ -453,8 +453,9 @@ async function sendMorningLesson(email, mode) {
   const normalizedSession = normalizeSession(session);
 
   try {
+    const nowLabel = formatTimeLabel(new Date());
     const delivery = await deliverEmail(user.email, {
-      subject: `每日学习助手｜${normalizedSession.date} 今日学习内容`,
+      subject: `每日学习助手｜${normalizedSession.date} ${nowLabel} 今日学习内容`,
       html: renderMorningEmail(normalizedSession, user.email),
       text: renderMorningText(normalizedSession, user.email)
     });
@@ -491,8 +492,9 @@ async function sendEveningReview(email, mode) {
 
   const rawSession = user.sessions.find((item) => item.id === session.id);
   try {
+    const nowLabel = formatTimeLabel(new Date());
     const delivery = await deliverEmail(user.email, {
-      subject: `每日学习助手｜${session.date} 晚间复习测试`,
+      subject: `每日学习助手｜${session.date} ${nowLabel} 晚间复习测试`,
       html: renderEveningEmail(session, user.email),
       text: renderEveningText(session, user.email)
     });
@@ -1567,6 +1569,7 @@ function smtpSend(options) {
 
 function buildMimeMessage(options) {
   const boundary = `BOUNDARY_${Date.now()}`;
+  const messageId = `<${Date.now()}.${Math.random().toString(16).slice(2)}@daily-study-buddy.local>`;
   const encodedSubject = `=?UTF-8?B?${Buffer.from(options.subject).toString("base64")}?=`;
   const plainTextBase64 = foldBase64(Buffer.from(String(options.text || ""), "utf8").toString("base64"));
   const htmlBase64 = foldBase64(Buffer.from(String(options.html || ""), "utf8").toString("base64"));
@@ -1574,6 +1577,8 @@ function buildMimeMessage(options) {
     `From: ${options.from}`,
     `To: ${options.to}`,
     `Subject: ${encodedSubject}`,
+    `Date: ${new Date().toUTCString()}`,
+    `Message-ID: ${messageId}`,
     "MIME-Version: 1.0",
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
     "",
@@ -1599,6 +1604,12 @@ function foldBase64(input, lineLength = 76) {
     lines.push(text.slice(index, index + lineLength));
   }
   return lines.join("\r\n");
+}
+
+function formatTimeLabel(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
 }
 
 function sortItemsForDelivery(items, learningTypes) {
