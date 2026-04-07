@@ -648,7 +648,7 @@ async function buildDailyContent(user, level) {
   const preferences = user.preferences || {};
   const types = normalizeLearningTypes(preferences.learningTypes);
   const perTypeCount = normalizeDailyCount(preferences.dailyCount);
-  const aiGenerationEnabled = CONTENT_GENERATION_MODE === "ai" || CONTENT_GENERATION_MODE === "hybrid";
+  const aiGenerationEnabled = CONTENT_GENERATION_MODE === "ai";
   const usedItems = [];
   const recentItems = collectRecentItems(user, 60);
   const nonEnglishTypes = [...new Set(types.filter((type) => !isEnglishType(type)))];
@@ -717,7 +717,7 @@ async function buildDailyContent(user, level) {
   return {
     items: mergedItems.map(normalizeContentItem),
     generationMode: aiGenerationEnabled
-      ? (nonEnglishCount ? (aiResult.ok ? "mixed-library+ai" : "mixed-library+fallback") : "library")
+      ? (nonEnglishCount ? (aiResult.ok ? "mixed-library+ai" : "mixed-library+fallback") : "ai")
       : "library-files"
   };
 }
