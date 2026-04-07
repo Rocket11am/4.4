@@ -89,8 +89,9 @@ if (require.main === module) {
 
 async function handleApi(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/cron") {
+    const cronRequireAuth = String(process.env.CRON_REQUIRE_AUTH || "false").trim().toLowerCase() === "true";
     const cronSecret = String(process.env.CRON_SECRET || "").trim();
-    if (cronSecret) {
+    if (cronRequireAuth && cronSecret) {
       const token =
         String(url.searchParams.get("secret") || "").trim() ||
         String(req.headers["x-cron-secret"] || "").trim() ||
@@ -458,7 +459,7 @@ async function sendMorningLesson(email, mode) {
       text: renderMorningText(normalizedSession, user.email)
     });
     session.delivery = session.delivery || {};
-    session.delivery.morning = delivery;
+    session.delivery.morning = { ...delivery, trigger: mode };
   } catch (error) {
     appendLog(`${user.email} 的晨间邮件发送失败：${error.message}`);
     return { ok: false, message: `晨间内容发送失败：${error.message}`, state: buildClientState(user.email) };
@@ -496,7 +497,7 @@ async function sendEveningReview(email, mode) {
       text: renderEveningText(session, user.email)
     });
     rawSession.delivery = rawSession.delivery || {};
-    rawSession.delivery.evening = delivery;
+    rawSession.delivery.evening = { ...delivery, trigger: mode };
     rawSession.quizSentAt = new Date().toISOString();
     rawSession.quizMode = mode;
   } catch (error) {
@@ -1339,11 +1340,14 @@ function toSchedulerDateKey(input) {
   return getSchedulerDateParts(date).dateKey;
 }
 
-function hasDeliveryOnDate(user, slot, dateKey) {
+function hasDeliveryOnDate(user, slot, dateKey, options = {}) {
   const sessions = sortSessions(user.sessions || []);
+  const trigger = String(options?.trigger || "").trim();
   return sessions.some((session) => {
-    const sentAt = session?.delivery?.[slot]?.sentAt;
+    const delivery = session?.delivery?.[slot];
+    const sentAt = delivery?.sentAt;
     if (!sentAt) return false;
+    if (trigger && String(delivery?.trigger || "").trim() !== trigger) return false;
     return toSchedulerDateKey(sentAt) === dateKey;
   });
 }
@@ -1371,13 +1375,13 @@ async function runSchedulerCheck(options = {}) {
     const shouldSendMorning =
       sendMinutes >= 0 &&
       currentMinutes >= sendMinutes &&
-      (options.force || !hasDeliveryOnDate(user, "morning", parts.dateKey));
+      (options.force || !hasDeliveryOnDate(user, "morning", parts.dateKey, { trigger: "auto" }));
 
     const shouldSendEvening =
       Boolean(user?.preferences?.reviewEnabled) &&
       reviewMinutes >= 0 &&
       currentMinutes >= reviewMinutes &&
-      (options.force || !hasDeliveryOnDate(user, "evening", parts.dateKey));
+      (options.force || !hasDeliveryOnDate(user, "evening", parts.dateKey, { trigger: "auto" }));
 
     if (shouldSendMorning) {
       triggeredMorning += 1;
