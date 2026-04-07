@@ -109,19 +109,42 @@ textarea {
 .nav-row {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.nav-row::-webkit-scrollbar {
+  display: none;
 }
 
 .nav-link {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  min-width: 84px;
   border: 1px solid transparent;
   padding: 8px 10px;
   font-size: 13px;
   color: var(--text-dim);
+  transition: border-color 120ms linear, background-color 120ms linear, color 120ms linear, box-shadow 120ms linear;
 }
 
 .nav-link:hover {
   border-color: var(--magenta);
   color: var(--cyan);
+  background: rgba(255, 0, 255, 0.08);
+}
+
+.nav-link.is-active {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(0, 255, 255, 0.14);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.25);
 }
 
 .main {
@@ -275,14 +298,19 @@ textarea {
   border: 1px solid var(--border);
   background: var(--card-strong);
   padding: 10px 12px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .stat-item b {
   display: block;
   font-family: "Orbitron", "Microsoft YaHei", sans-serif;
-  font-size: 24px;
+  font-size: clamp(18px, 2.2vw, 24px);
   color: var(--cyan);
   margin-top: 6px;
+  line-height: 1.2;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .list {
@@ -356,10 +384,17 @@ textarea {
 
   .nav-row {
     width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    overflow: visible;
   }
 
   .nav-link {
     width: 100%;
+    min-width: 0;
+    padding: 8px 6px;
+    font-size: 12px;
   }
 }
 

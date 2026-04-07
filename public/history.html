@@ -17,17 +17,18 @@
       <strong>每日学习助手</strong>
     </a>
     <nav class="nav-row">
-      <a class="nav-link" data-email-link="/today" href="/today">今日学习</a>
-      <a class="nav-link" data-email-link="/settings" href="/settings">设置</a>
       <a class="nav-link" href="/">首页</a>
+      <a class="nav-link" data-email-link="/today" href="/today">今日学习</a>
+      <a class="nav-link" data-email-link="/history" href="/history">学习记录</a>
+      <a class="nav-link" data-email-link="/settings" href="/settings">设置</a>
     </nav>
   </header>
 
   <main class="main site-shell">
     <section id="history-empty" class="card center-note" hidden>
       <h1 class="section-title">暂无记录</h1>
-      <p class="muted">先去完成首次配置并发送今日学习内容。</p>
-      <p><a class="btn" href="/onboarding"><span>去配置</span></a></p>
+      <p class="muted">先去设置页保存学习偏好并发送今日学习内容。</p>
+      <p><a class="btn" href="/settings"><span>去设置</span></a></p>
     </section>
 
     <section id="history-content" hidden>
@@ -44,10 +45,24 @@
 
       <article class="card" style="margin-bottom:12px;">
         <h2 class="section-title">最近 7 天趋势</h2>
-        <div id="timeline" class="timeline"></div>
+        <div class="trend-shell">
+          <div id="timeline" class="timeline"></div>
+          <div id="accuracy-chart" class="accuracy-chart"></div>
+        </div>
       </article>
 
-      <section class="history-shell">
+      <section class="card history-panel-card" style="margin-bottom:12px;">
+        <div class="panel-switch" role="tablist" aria-label="record panels">
+          <button id="history-tab-records" class="btn btn-alt is-active" type="button" role="tab" aria-selected="true" aria-controls="history-records-panel">
+            <span>历史记录</span>
+          </button>
+          <button id="history-tab-wrongbook" class="btn btn-alt" type="button" role="tab" aria-selected="false" aria-controls="history-wrongbook-panel">
+            <span>错题本</span>
+          </button>
+        </div>
+      </section>
+
+      <section id="history-records-panel" class="history-shell" role="tabpanel" aria-labelledby="history-tab-records">
         <article class="card">
           <h2 class="section-title">历史列表</h2>
           <div id="session-list" class="list"></div>
@@ -56,6 +71,11 @@
           <h2 class="section-title">记录详情</h2>
           <div id="session-detail" class="list"></div>
         </article>
+      </section>
+
+      <section id="history-wrongbook-panel" class="card" role="tabpanel" aria-labelledby="history-tab-wrongbook" hidden>
+        <h2 class="section-title">错题本</h2>
+        <div id="wrongbook-list" class="list"></div>
       </section>
     </section>
   </main>

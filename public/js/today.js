@@ -1,5 +1,5 @@
 (function todayPage() {
-  const refs = {
+  var refs = {
     missingEmail: document.getElementById("missing-email"),
     todayContent: document.getElementById("today-content"),
     todayItemsCard: document.getElementById("today-items-card"),
@@ -7,16 +7,47 @@
     doneFlag: document.getElementById("done-flag"),
     completionRate: document.getElementById("completion-rate"),
     nextReminder: document.getElementById("next-reminder"),
+    eveningReminder: document.getElementById("evening-reminder"),
     completeBtn: document.getElementById("complete-btn"),
     sendMorningBtn: document.getElementById("send-morning-btn"),
     sendEveningBtn: document.getElementById("send-evening-btn"),
     todayItems: document.getElementById("today-items"),
     quizForm: document.getElementById("quiz-form"),
-    reviewPanel: document.getElementById("review-panel")
+    quizWrong: document.getElementById("quiz-wrong"),
+    reviewPanel: document.getElementById("review-panel"),
+    petAvatar: document.getElementById("pet-avatar"),
+    petName: document.getElementById("pet-name"),
+    petStageLabel: document.getElementById("pet-stage-label"),
+    petAge: document.getElementById("pet-age"),
+    petLevel: document.getElementById("pet-level"),
+    petFeeds: document.getElementById("pet-feeds"),
+    petFedToday: document.getElementById("pet-fed-today"),
+    petMood: document.getElementById("pet-mood"),
+    petProgressText: document.getElementById("pet-progress-text"),
+    petProgressBar: document.getElementById("pet-progress-bar"),
+    petNextTip: document.getElementById("pet-next-tip")
   };
 
-  let email = "";
-  let state = null;
+  var email = "";
+  var state = null;
+  var quizUi = {
+    sessionId: "",
+    activeIndex: 0,
+    answers: {}
+  };
+
+  function getSessionFromState() {
+    var sessionId = DLA.getParam("sessionId");
+    var date = DLA.getParam("date");
+    var history = state && Array.isArray(state.history) ? state.history : [];
+    if (sessionId) return history.filter(function (item) { return item.id === sessionId; })[0] || state.activeSession || null;
+    if (date) return history.filter(function (item) { return item.date === date; })[0] || state.activeSession || null;
+    return state && state.activeSession ? state.activeSession : null;
+  }
+
+  function isCurrentSession(session) {
+    return Boolean(session && state && state.activeSession && session.id === state.activeSession.id);
+  }
 
   function renderMissing() {
     refs.missingEmail.hidden = false;
@@ -24,100 +55,195 @@
     refs.todayItemsCard.hidden = true;
   }
 
-  function renderItems() {
-    const items = state?.activeSession?.items || [];
+  function renderItems(session) {
+    var items = session && Array.isArray(session.items) ? session.items : [];
+    refs.todayItemsCard.hidden = false;
     if (!items.length) {
-      refs.todayItems.innerHTML = '<div class="empty">今日内容尚未生成。点击“发送今日内容”后会出现。</div>';
+      refs.todayItems.innerHTML = '<div class="empty">当前还没有可展示的学习内容，先点击“发送今日内容”。</div>';
       return;
     }
-
-    refs.todayItems.innerHTML = items.map((item, index) => {
-      const detail = item.type === "vocabulary"
-        ? `中文：${DLA.escapeHtml(item.chinese || "")}<br>例句：${DLA.escapeHtml(item.example || "")}`
-        : item.type === "spoken"
-          ? `场景：${DLA.escapeHtml(item.scene || "")}<br>例句：${DLA.escapeHtml(item.example || "")}`
-          : `摘要：${DLA.escapeHtml(item.summary || "")}<br>启发：${DLA.escapeHtml(item.takeaway || "")}`;
-      return `
-        <article class="list-item">
-          <strong>${index + 1}. ${DLA.escapeHtml(item.headline || "")}</strong>
-          <div class="tiny">${DLA.labelForType(item.type)}</div>
-          <p class="muted">${detail}</p>
-        </article>
-      `;
+    refs.todayItems.innerHTML = items.map(function (item, index) {
+      var detail = "";
+      if (item.type === "vocabulary") {
+        detail = "中文：" + DLA.escapeHtml(item.chinese || "") + "<br>例句：" + DLA.escapeHtml(item.example || "");
+      } else if (item.type === "spoken") {
+        detail = "场景：" + DLA.escapeHtml(item.scene || "") + "<br>例句：" + DLA.escapeHtml(item.example || "");
+      } else if (item.type === "ai_news") {
+        detail = "要点：" + DLA.escapeHtml(item.summary || "") + "<br>启发：" + DLA.escapeHtml(item.takeaway || "");
+      } else {
+        detail = "摘要：" + DLA.escapeHtml(item.summary || "") + "<br>启发：" + DLA.escapeHtml(item.takeaway || "");
+      }
+      return [
+        '<article class="list-item">',
+        "<strong>" + (index + 1) + ". " + DLA.escapeHtml(item.headline || "") + "</strong>",
+        '<div class="tiny">' + DLA.labelForType(item.type) + "</div>",
+        '<p class="muted">' + detail + "</p>",
+        "</article>"
+      ].join("");
     }).join("");
   }
 
-  function renderQuiz() {
-    const session = state?.activeSession;
-    const questions = session?.quiz?.questions || [];
+  function ensureQuizUi(session, questions) {
+    var sid = session && session.id ? session.id : "";
+    if (quizUi.sessionId !== sid) {
+      quizUi.sessionId = sid;
+      quizUi.activeIndex = 0;
+      quizUi.answers = {};
+      var oldAnswers = session && session.quizResult && Array.isArray(session.quizResult.answers) ? session.quizResult.answers : [];
+      oldAnswers.forEach(function (answerItem) {
+        if (answerItem && answerItem.questionId) {
+          quizUi.answers[answerItem.questionId] = String(answerItem.answer || "");
+        }
+      });
+    }
+    if (quizUi.activeIndex >= questions.length) {
+      quizUi.activeIndex = Math.max(0, questions.length - 1);
+    }
+  }
+
+  function renderQuiz(session) {
+    var questions = session && session.quiz && Array.isArray(session.quiz.questions) ? session.quiz.questions : [];
     if (!questions.length) {
       refs.quizForm.innerHTML = '<div class="empty">当前没有可提交的晚间复习题。</div>';
       return;
     }
 
-    refs.quizForm.innerHTML = questions.map((question, index) => {
-      if (question.type === "choice") {
-        const options = (question.options || []).map((option) => `
-          <label class="list-item">
-            <input type="radio" name="${question.id}" value="${DLA.escapeHtml(option)}"> ${DLA.escapeHtml(option)}
-          </label>
-        `).join("");
-        return `<div class="list-item"><strong>${index + 1}. ${DLA.escapeHtml(question.prompt)}</strong><div class="list">${options}</div></div>`;
-      }
-      return `
-        <div class="list-item">
-          <strong>${index + 1}. ${DLA.escapeHtml(question.prompt)}</strong>
-          <input class="input" type="text" name="${question.id}" placeholder="${DLA.escapeHtml(question.hint || "请输入答案")}">
-        </div>
-      `;
-    }).join("") + '<button class="btn" type="submit"><span>提交复习结果</span></button>';
+    ensureQuizUi(session, questions);
+    var active = questions[quizUi.activeIndex];
+    var selected = quizUi.answers[active.id] || "";
+    var submitted = Boolean(session && session.quizResult && session.quizResult.submittedAt);
 
-    if (session?.quizResult) {
-      refs.quizForm.innerHTML += `
-        <div class="list-item">
-          <div class="ok">已提交：${DLA.escapeHtml(DLA.formatDateTime(session.quizResult.submittedAt))}</div>
-          <div>得分：${session.quizResult.score}/${session.quizResult.total}</div>
-          <div>正确率：${session.quizResult.accuracy}%</div>
-        </div>
-      `;
+    var options = (active.options || []).map(function (option, optionIdx) {
+      var checked = selected === option ? ' checked' : "";
+      return [
+        '<label class="quiz-option">',
+        '<input type="radio" name="quiz-active" data-question-id="' + DLA.escapeHtml(active.id) + '" value="' + DLA.escapeHtml(option) + '"' + checked + ">",
+        '<span class="quiz-option-key">' + String.fromCharCode(65 + optionIdx) + "</span>",
+        '<span>' + DLA.escapeHtml(option) + "</span>",
+        "</label>"
+      ].join("");
+    }).join("");
+
+    var dots = questions.map(function (question, idx) {
+      var answered = quizUi.answers[question.id] ? " is-answered" : "";
+      var activeClass = idx === quizUi.activeIndex ? " is-active" : "";
+      return '<button type="button" class="quiz-dot' + answered + activeClass + '" data-quiz-index="' + idx + '">' + (idx + 1) + "</button>";
+    }).join("");
+
+    refs.quizForm.innerHTML = [
+      '<div class="quiz-shell">',
+      '<div class="quiz-head">',
+      '<div class="tiny">第 <b>' + (quizUi.activeIndex + 1) + "</b> / " + questions.length + " 题</div>",
+      submitted ? '<div class="tiny ok">已提交过，可再次作答（覆盖最新结果）</div>' : '<div class="tiny">单选题</div>',
+      "</div>",
+      '<div class="quiz-question">' + DLA.escapeHtml(active.prompt || "") + "</div>",
+      '<div class="quiz-options">' + options + "</div>",
+      '<div class="quiz-nav-actions">',
+      '<button type="button" class="btn btn-alt" data-quiz-nav="prev"' + (quizUi.activeIndex <= 0 ? " disabled" : "") + '><span>上一题</span></button>',
+      '<button type="button" class="btn btn-alt" data-quiz-nav="next"' + (quizUi.activeIndex >= questions.length - 1 ? " disabled" : "") + '><span>下一题</span></button>',
+      '<button class="btn" type="submit"><span>提交复习结果</span></button>',
+      "</div>",
+      '<div class="quiz-pager">' + dots + "</div>",
+      submitted && session.quizResult
+        ? ('<div class="list-item"><div class="ok">最近一次得分：' + session.quizResult.score + "/" + session.quizResult.total + "（" + session.quizResult.accuracy + "%）</div></div>")
+        : "",
+      "</div>"
+    ].join("");
+  }
+
+  function renderQuizWrong(session) {
+    var wrongItems = session && session.quizResult && Array.isArray(session.quizResult.wrongItems) ? session.quizResult.wrongItems : [];
+    if (!wrongItems.length) {
+      refs.quizWrong.innerHTML = '<div class="empty">最近一次作答没有错题。</div>';
+      return;
     }
+    refs.quizWrong.innerHTML = [
+      '<article class="list-item"><strong>最近一次错题</strong></article>',
+      wrongItems.map(function (item, idx) {
+        return [
+          '<article class="list-item">',
+          '<div><strong>' + (idx + 1) + ". " + DLA.escapeHtml(item.prompt || "") + "</strong></div>",
+          '<p class="muted">你的答案：' + DLA.escapeHtml(item.answer || "(未作答)") + "</p>",
+          '<p class="muted">正确答案：' + DLA.escapeHtml(item.correctAnswer || "--") + "</p>",
+          item.hint ? ('<p class="muted">提示：' + DLA.escapeHtml(item.hint) + "</p>") : "",
+          "</article>"
+        ].join("");
+      }).join("")
+    ].join("");
+  }
+
+  function renderPet() {
+    var pet = state && state.pet ? state.pet : null;
+    if (!pet) return;
+    refs.petName.textContent = pet.name || "小闪电";
+    refs.petStageLabel.textContent = pet.stageLabel || "像素幼宠";
+    refs.petAge.textContent = String(pet.age || 1) + " 岁";
+    refs.petLevel.textContent = "Lv." + String(pet.level || 1);
+    refs.petFeeds.textContent = String(pet.lifetimeFeeds || 0) + " 次";
+    refs.petFedToday.textContent = pet.fedToday ? "已喂养" : "未喂养";
+    refs.petMood.textContent = pet.mood || "等待投喂";
+    refs.petProgressText.textContent = String(pet.progressDays || 0) + " / 10";
+    refs.petProgressBar.style.width = Math.max(0, Math.min(100, (Number(pet.progressDays || 0) / 10) * 100)) + "%";
+    refs.petNextTip.textContent = pet.daysToNextLevel === 10
+      ? "再连续完成 10 天，宠物会成长一级。"
+      : ("再连续完成 " + String(pet.daysToNextLevel || 0) + " 天，宠物会成长一级。");
+    refs.petAvatar.className = "pet-avatar pet-stage-" + (pet.stage || "seed");
   }
 
   function render() {
+    var session = getSessionFromState();
+    var isCurrent = isCurrentSession(session);
     refs.missingEmail.hidden = true;
     refs.todayContent.hidden = false;
-    refs.todayItemsCard.hidden = false;
-
     DLA.fillEmailLinks(email);
-    refs.streak.textContent = `${state?.stats?.streak || 0} 天`;
-    refs.completionRate.textContent = `${state?.stats?.completionRate || 0}%`;
-    refs.nextReminder.textContent = state?.profile?.sendTime || "--:--";
-    refs.doneFlag.textContent = state?.activeSession?.completedAt ? "已完成" : "未完成";
-    renderItems();
-    renderQuiz();
 
-    const hasSession = Boolean(state?.activeSession?.id);
-    refs.completeBtn.disabled = !hasSession;
+    refs.streak.textContent = String(DLA.safeGet(state, ["stats", "streak"], 0)) + " 天";
+    refs.completionRate.textContent = String(DLA.safeGet(state, ["stats", "completionRate"], 0)) + "%";
+    refs.nextReminder.textContent = DLA.safeGet(state, ["profile", "sendTime"], "--:--");
+    refs.eveningReminder.textContent = DLA.safeGet(state, ["profile", "reviewTime"], "--:--");
+    refs.doneFlag.textContent = session && session.completedAt ? "已完成" : "未完成";
+
+    renderItems(session);
+    renderQuiz(session);
+    renderQuizWrong(session);
+    renderPet();
+
+    refs.completeBtn.disabled = !isCurrent;
+    refs.sendMorningBtn.disabled = !state || !state.profile;
+    refs.sendEveningBtn.disabled = !isCurrent;
+    refs.completeBtn.title = isCurrent ? "" : "历史记录仅供查看";
+    refs.sendEveningBtn.title = isCurrent ? "" : "只允许对当日学习发送晚间复习";
   }
 
-  async function reloadState() {
-    state = await DLA.fetchJson(`/api/state?email=${encodeURIComponent(email)}`);
-    render();
+  async function loadStateWithRestore() {
+    var remote = await DLA.fetchJson("/api/state?email=" + encodeURIComponent(email));
+    if (remote && remote.profile) {
+      state = remote;
+      DLA.cacheState(email, state);
+      return;
+    }
+    var cached = DLA.loadCachedState(email);
+    if (cached && cached.profile) {
+      var restored = await DLA.restoreState(email, cached);
+      state = restored && restored.profile ? restored : cached;
+      DLA.cacheState(email, state);
+      return;
+    }
+    state = remote;
   }
 
   async function completeToday() {
-    const sessionId = state?.activeSession?.id;
-    if (!sessionId) {
-      DLA.showToast("当前没有可完成的学习内容");
+    var session = getSessionFromState();
+    var sessionId = session ? session.id : "";
+    if (!sessionId || !isCurrentSession(session)) {
+      DLA.showToast("历史记录页面不支持打卡，请回到当日学习。");
       return;
     }
     refs.completeBtn.disabled = true;
     try {
-      const response = await DLA.fetchJson("/api/complete-session", {
-        method: "POST",
-        body: { email, sessionId }
-      });
+      var response = await DLA.fetchJson("/api/complete-session", { method: "POST", body: { email: email, sessionId: sessionId } });
       state = response.state;
+      DLA.cacheState(email, state);
       render();
       DLA.showToast(response.message || "已记录今日完成");
     } catch (error) {
@@ -130,11 +256,9 @@
   async function sendMorning() {
     refs.sendMorningBtn.disabled = true;
     try {
-      const response = await DLA.fetchJson("/api/send/morning", {
-        method: "POST",
-        body: { email }
-      });
+      var response = await DLA.fetchJson("/api/send/morning", { method: "POST", body: { email: email } });
       state = response.state;
+      DLA.cacheState(email, state);
       render();
       DLA.showToast(response.message || "已发送今日内容");
     } catch (error) {
@@ -145,13 +269,16 @@
   }
 
   async function sendEvening() {
+    var session = getSessionFromState();
+    if (!isCurrentSession(session)) {
+      DLA.showToast("只允许对当日学习发送晚间复习。");
+      return;
+    }
     refs.sendEveningBtn.disabled = true;
     try {
-      const response = await DLA.fetchJson("/api/send/evening", {
-        method: "POST",
-        body: { email }
-      });
+      var response = await DLA.fetchJson("/api/send/evening", { method: "POST", body: { email: email } });
       state = response.state;
+      DLA.cacheState(email, state);
       render();
       DLA.showToast(response.message || "已发送晚间复习");
     } catch (error) {
@@ -163,25 +290,19 @@
 
   async function submitQuiz(event) {
     event.preventDefault();
-    const sessionId = state?.activeSession?.id;
-    const questions = state?.activeSession?.quiz?.questions || [];
+    var session = getSessionFromState();
+    var sessionId = session ? session.id : "";
+    var questions = session && session.quiz && Array.isArray(session.quiz.questions) ? session.quiz.questions : [];
     if (!sessionId || !questions.length) return;
 
-    const answers = questions.map((question) => {
-      if (question.type === "choice") {
-        const checked = refs.quizForm.querySelector(`input[name="${question.id}"]:checked`);
-        return checked ? checked.value : "";
-      }
-      const input = refs.quizForm.querySelector(`input[name="${question.id}"]`);
-      return input ? input.value : "";
+    var answers = questions.map(function (question) {
+      return quizUi.answers[question.id] || "";
     });
 
     try {
-      const response = await DLA.fetchJson("/api/quiz-submit", {
-        method: "POST",
-        body: { email, sessionId, answers }
-      });
+      var response = await DLA.fetchJson("/api/quiz-submit", { method: "POST", body: { email: email, sessionId: sessionId, answers: answers } });
       state = response.state;
+      DLA.cacheState(email, state);
       render();
       DLA.showToast(response.message || "复习结果已提交");
     } catch (error) {
@@ -189,11 +310,56 @@
     }
   }
 
+  function bindQuizInteractions() {
+    refs.quizForm.addEventListener("change", function (event) {
+      var target = event.target;
+      if (!target || target.name !== "quiz-active") return;
+      var questionId = target.getAttribute("data-question-id") || "";
+      if (!questionId) return;
+      quizUi.answers[questionId] = target.value || "";
+
+      var session = getSessionFromState();
+      var questions = session && session.quiz && Array.isArray(session.quiz.questions) ? session.quiz.questions : [];
+      if (quizUi.activeIndex < questions.length - 1) {
+        quizUi.activeIndex += 1;
+      }
+      renderQuiz(session);
+    });
+
+    refs.quizForm.addEventListener("click", function (event) {
+      var target = event.target;
+      if (!target) return;
+      var navBtn = target.closest("[data-quiz-nav]");
+      if (navBtn) {
+        var nav = navBtn.getAttribute("data-quiz-nav");
+        if (nav === "prev") {
+          quizUi.activeIndex = Math.max(0, quizUi.activeIndex - 1);
+        } else if (nav === "next") {
+          var session = getSessionFromState();
+          var count = session && session.quiz && Array.isArray(session.quiz.questions) ? session.quiz.questions.length : 0;
+          quizUi.activeIndex = Math.min(Math.max(0, count - 1), quizUi.activeIndex + 1);
+        }
+        renderQuiz(getSessionFromState());
+        return;
+      }
+
+      var dotBtn = target.closest("[data-quiz-index]");
+      if (dotBtn) {
+        var idx = Number(dotBtn.getAttribute("data-quiz-index"));
+        if (!Number.isNaN(idx)) {
+          quizUi.activeIndex = Math.max(0, idx);
+          renderQuiz(getSessionFromState());
+        }
+      }
+    });
+  }
+
   function bind() {
     refs.completeBtn.addEventListener("click", completeToday);
     refs.sendMorningBtn.addEventListener("click", sendMorning);
     refs.sendEveningBtn.addEventListener("click", sendEvening);
     refs.quizForm.addEventListener("submit", submitQuiz);
+    bindQuizInteractions();
   }
 
   async function init() {
@@ -204,18 +370,30 @@
       return;
     }
     DLA.rememberEmail(email);
-
     try {
-      await reloadState();
+      await loadStateWithRestore();
+      if (!state || !state.profile) {
+        renderMissing();
+        return;
+      }
+      render();
     } catch (error) {
-      DLA.showToast(error.message || "加载失败");
-      renderMissing();
-      return;
+      state = DLA.loadCachedState(email);
+      if (state && state.profile) {
+        var restored = await DLA.restoreState(email, state);
+        if (restored && restored.profile) state = restored;
+        DLA.cacheState(email, state);
+        render();
+        DLA.showToast("当前使用本地缓存记录，已尝试自动恢复。");
+      } else {
+        DLA.showToast(error.message || "加载失败");
+        renderMissing();
+        return;
+      }
     }
-
-    if (DLA.getParam("panel") === "review") {
-      window.requestAnimationFrame(() => {
-        refs.reviewPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (DLA.getParam("panel") === "review" && refs.reviewPanel) {
+      window.requestAnimationFrame(function () {
+        refs.reviewPanel.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
   }

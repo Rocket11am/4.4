@@ -1,0 +1,29 @@
+name: Trigger Vercel Scheduler
+
+on:
+  schedule:
+    - cron: "* * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping-cron-endpoint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /api/cron
+        env:
+          CRON_URL: ${{ secrets.CRON_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          BASE_URL="${CRON_URL:-https://www.learnmore.asia/api/cron}"
+          if [ -n "${CRON_SECRET:-}" ]; then
+            if [[ "$BASE_URL" == *"?"* ]]; then
+              URL="${BASE_URL}&secret=${CRON_SECRET}"
+            else
+              URL="${BASE_URL}?secret=${CRON_SECRET}"
+            fi
+          else
+            URL="$BASE_URL"
+          fi
+          echo "Triggering: $URL"
+          curl -fsS --max-time 60 "$URL"

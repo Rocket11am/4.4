@@ -1,4 +1,4 @@
-const http = require("http");
+﻿const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const tls = require("tls");
@@ -13,11 +13,17 @@ const DATA_DIR = process.env.VERCEL ? path.join(RUNTIME_ROOT, "daily-learning-as
 const STORE_PATH = path.join(DATA_DIR, "store.json");
 const CONTENT_PATH = path.join(DATA_DIR, "content.json");
 const TRACKING_GIF = Buffer.from("R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", "base64");
+const ARK_API_KEY = String(process.env.ARK_API_KEY || "").trim();
+const ARK_BASE_URL = String(process.env.ARK_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3").trim().replace(/\/$/, "");
+const ARK_MODEL = String(process.env.ARK_MODEL || process.env.ARK_ENDPOINT_ID || "").trim();
+const ARK_TIMEOUT_MS = Number(process.env.ARK_TIMEOUT_MS || 45000);
+let ENGLISH_LIBRARY_POOL = [];
 
 const TYPE_META = {
-  vocabulary: { label: "英语单词", reviewEligible: true, accent: "#FF3AF2" },
-  spoken: { label: "英语口语", reviewEligible: true, accent: "#00F5D4" },
-  finance: { label: "财经新闻", reviewEligible: false, accent: "#FFE600" },
+  spoken: { label: "地道口语表达", reviewEligible: true, accent: "#00F5D4" },
+  vocabulary: { label: "单词记忆", reviewEligible: true, accent: "#FF3AF2" },
+  finance: { label: "每日财经资讯", reviewEligible: false, accent: "#FFE600" },
+  ai_news: { label: "每日AI前沿资讯", reviewEligible: false, accent: "#7B2FFF" },
   custom: { label: "自定义主题", reviewEligible: false, accent: "#FF6B35" }
 };
 
@@ -25,11 +31,18 @@ const LEGACY_TYPE_MAP = {
   vocabulary: "vocabulary",
   spoken: "spoken",
   finance: "finance",
+  "ai-news": "ai_news",
+  ai_news: "ai_news",
+  ai: "ai_news",
+  aifrontier: "ai_news",
+  ai_frontier: "ai_news",
   custom: "custom",
   business: "spoken",
   travel: "spoken",
   writing: "spoken"
 };
+
+ENGLISH_LIBRARY_POOL = buildEnglishLibraryPool();
 
 ensureDir(DATA_DIR);
 ensureFile(CONTENT_PATH, JSON.stringify(seedContent(), null, 2));
@@ -57,15 +70,29 @@ if (require.main === module) {
   const server = http.createServer(requestListener);
   server.listen(PORT, () => {
     console.log(`Daily Learning Assistant is running at http://localhost:${PORT}`);
-    runSchedulerCheck();
-    setInterval(runSchedulerCheck, 30 * 1000);
+    runSchedulerCheck().catch((error) => appendLog(`scheduler start failed: ${error.message}`));
+    setInterval(() => {
+      runSchedulerCheck().catch((error) => appendLog(`scheduler interval failed: ${error.message}`));
+    }, 30 * 1000);
   });
 }
 
 async function handleApi(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/cron") {
-    runSchedulerCheck();
-    respondJson(res, 200, { ok: true, message: "scheduler triggered" });
+    const cronSecret = String(process.env.CRON_SECRET || "").trim();
+    if (cronSecret) {
+      const token =
+        String(url.searchParams.get("secret") || "").trim() ||
+        String(req.headers["x-cron-secret"] || "").trim() ||
+        String(req.headers.authorization || "").replace(/^Bearer\s+/i, "").trim();
+      if (token !== cronSecret) {
+        respondJson(res, 401, { ok: false, message: "cron unauthorized" });
+        return;
+      }
+    }
+
+    const result = await runSchedulerCheck({ force: url.searchParams.get("force") === "1" });
+    respondJson(res, 200, { ok: true, message: "scheduler triggered", result });
     return;
   }
 
@@ -185,6 +212,7 @@ function buildClientState(email) {
     profile: user
       ? {
           email: user.email,
+          petName: user.preferences.petName,
           dailyCount: user.preferences.dailyCount,
           learningTypes: user.preferences.learningTypes,
           customTopic: user.preferences.customTopic,
@@ -196,6 +224,7 @@ function buildClientState(email) {
         }
       : null,
     stats,
+    pet: user ? buildPetState(user, sessions, stats) : null,
     activeSession,
     history: sessions.slice(0, 12),
     timeline: buildTimeline(sessions),
@@ -311,6 +340,32 @@ function computeStreak(completedSessions) {
   return streak;
 }
 
+function buildPetState(user, sessions, stats) {
+  const streak = Number(stats?.streak || 0);
+  const growthLevel = Math.max(1, 1 + Math.floor(streak / 10));
+  const stage = growthLevel >= 3 ? "legend" : growthLevel >= 2 ? "spark" : "seed";
+  const stageLabel = stage === "legend" ? "像素终极体" : stage === "spark" ? "像素进化体" : "像素幼宠";
+  const progressDays = streak % 10;
+  const todayKey = formatDateKey(new Date());
+  const fedToday = sessions.some((session) => session.date === todayKey && session.completedAt);
+  const lifetimeFeeds = sessions.filter((session) => Boolean(session.completedAt)).length;
+  const daysToNextLevel = progressDays === 0 ? 10 : (10 - progressDays);
+  const petName = String(user?.preferences?.petName || "小闪电").trim() || "小闪电";
+
+  return {
+    name: petName,
+    stage,
+    stageLabel,
+    age: growthLevel,
+    level: growthLevel,
+    progressDays,
+    daysToNextLevel,
+    fedToday,
+    lifetimeFeeds,
+    mood: fedToday ? "今天吃饱了，状态很棒" : "等待投喂"
+  };
+}
+
 function deriveDifficultyLevel(user) {
   const sessions = sortSessions(user.sessions)
     .map(normalizeSession)
@@ -360,8 +415,18 @@ async function sendMorningLesson(email, mode) {
   let session = sortSessions(user.sessions).find((item) => item.date === today);
 
   if (!session) {
-    session = createSession(user, mode);
+    session = await createSession(user, mode);
     user.sessions.push(session);
+  } else if (mode === "manual") {
+    const regenerated = await buildDailyContent(user, deriveDifficultyLevel(user));
+    session.items = regenerated.items;
+    session.generationMode = regenerated.generationMode;
+    session.reviewEligible = hasReviewableItems(regenerated.items);
+    session.quiz = session.reviewEligible ? buildQuizForSession(session) : null;
+    session.quizResult = null;
+    session.quizSentAt = null;
+    session.quizMode = null;
+    session.createdAt = new Date().toISOString();
   }
 
   const normalizedSession = normalizeSession(session);
@@ -493,12 +558,30 @@ function submitQuiz(payload) {
     };
   });
 
+  const wrongItems = reviewed
+    .filter((item) => !item.isCorrect)
+    .map((item) => {
+      const question = questions.find((q) => q.id === item.questionId) || {};
+      return {
+        id: createId(),
+        date: formatDateKey(new Date()),
+        sessionId,
+        type: "custom",
+        prompt: String(item.prompt || ""),
+        answer: String(item.answer || ""),
+        correctAnswer: String(item.correctAnswer || ""),
+        hint: String(question.hint || ""),
+        lastWrongAt: new Date().toISOString()
+      };
+    });
+
   session.quizResult = {
     submittedAt: new Date().toISOString(),
     score,
     total: questions.length,
     accuracy: questions.length ? Math.round((score / questions.length) * 100) : 0,
-    answers: reviewed
+    answers: reviewed,
+    wrongItems
   };
 
   appendLog(`${user.email} 完成了晚间测试，正确率 ${session.quizResult.accuracy}%`);
@@ -510,10 +593,11 @@ function submitQuiz(payload) {
   };
 }
 
-function createSession(user, mode) {
+async function createSession(user, mode) {
   const now = new Date();
   const difficultyLevel = deriveDifficultyLevel(user);
-  const items = buildDailyContent(user.preferences, difficultyLevel);
+  const generated = await buildDailyContent(user, difficultyLevel);
+  const items = generated.items;
   const session = {
     id: createId(),
     email: user.email,
@@ -523,7 +607,7 @@ function createSession(user, mode) {
     learningTypes: user.preferences.learningTypes,
     customTopic: user.preferences.customTopic,
     difficultyLevel,
-    generationMode: "curated-fallback",
+    generationMode: generated.generationMode,
     items,
     reviewEligible: hasReviewableItems(items),
     completedAt: null,
@@ -539,34 +623,405 @@ function createSession(user, mode) {
   return session;
 }
 
-function buildDailyContent(preferences, level) {
+async function buildDailyContent(user, level) {
+  const preferences = user.preferences || {};
   const types = normalizeLearningTypes(preferences.learningTypes);
   const count = normalizeDailyCount(preferences.dailyCount);
-  const items = [];
+  const sequence = buildTypeSequence(types, count);
+  const usedItems = [];
+  const recentItems = collectRecentItems(user, 60);
+  const nonEnglishTypes = [...new Set(sequence.filter((type) => !isEnglishType(type)))];
+  const nonEnglishCount = sequence.filter((type) => !isEnglishType(type)).length;
+  const aiResult = nonEnglishCount
+    ? await generateDailyContentWithArk({ ...preferences, learningTypes: nonEnglishTypes }, level, nonEnglishCount)
+    : { ok: false, items: [] };
+  const aiPools = new Map();
+  dedupeContentItems(aiResult.items || []).forEach((item) => {
+    const type = normalizeItemType(item.type);
+    if (!aiPools.has(type)) aiPools.set(type, []);
+    aiPools.get(type).push(item);
+  });
 
-  for (let index = 0; index < count; index += 1) {
-    const type = types[index % types.length];
-    if (type === "custom") {
-      items.push(buildCustomTopicItem(preferences.customTopic, level, index));
-      continue;
+  for (const type of sequence) {
+    let picked = null;
+    if (isEnglishType(type)) {
+      picked = pickCuratedItem(type, level, [...recentItems, ...usedItems]);
+    } else {
+      picked = takeAiItemByType(type, aiPools, [...recentItems, ...usedItems]);
+      if (!picked) {
+        picked = buildSyntheticItem(type, preferences.customTopic, level, usedItems.length + 1);
+      }
     }
-    items.push(pickCuratedItem(type, level));
+    if (!picked) continue;
+    const key = itemUniqKey(picked);
+    if (!key) continue;
+    if ([...recentItems, ...usedItems].some((item) => itemUniqKey(item) === key)) continue;
+    usedItems.push(picked);
   }
 
-  return items.map(normalizeContentItem);
+  const fallbackItems = buildFallbackItems(preferences, level, count, [...recentItems, ...usedItems]);
+  const mergedItems = dedupeContentItems([...usedItems, ...fallbackItems]).slice(0, count);
+
+  return {
+    items: mergedItems.map(normalizeContentItem),
+    generationMode: nonEnglishCount ? (aiResult.ok ? "mixed-library+ai" : "mixed-library+fallback") : "library"
+  };
 }
 
-function pickCuratedItem(type, level) {
-  const fallback = contentPool.filter((item) => item.type === type);
+function buildTypeSequence(types, count) {
+  const sequence = [];
+  for (let index = 0; index < count; index += 1) {
+    sequence.push(types[index % types.length]);
+  }
+  return sequence;
+}
+
+function collectRecentItems(user, maxItems) {
+  const sessions = sortSessions(Array.isArray(user?.sessions) ? user.sessions : [])
+    .map(normalizeSession)
+    .slice(0, Math.max(1, Number(maxItems || 60)));
+  return sessions.flatMap((session) => Array.isArray(session.items) ? session.items : []);
+}
+
+function isEnglishType(type) {
+  return type === "spoken" || type === "vocabulary";
+}
+
+function takeAiItemByType(type, pools, usedItems = []) {
+  const pool = Array.isArray(pools?.get(type)) ? pools.get(type) : [];
+  if (!pool.length) return null;
+  const usedKeys = new Set((Array.isArray(usedItems) ? usedItems : []).map(itemUniqKey));
+  for (let index = 0; index < pool.length; index += 1) {
+    const item = pool[index];
+    if (!usedKeys.has(itemUniqKey(item))) return item;
+  }
+  return null;
+}
+
+function buildFallbackItems(preferences, level, targetCount, existingItems = []) {
+  const types = normalizeLearningTypes(preferences.learningTypes);
+  const fallback = [];
+  const existingKeys = new Set(dedupeContentItems(existingItems).map(itemUniqKey));
+  let index = 0;
+  let guard = 0;
+  const maxGuard = targetCount * 20;
+
+  while (fallback.length < targetCount && guard < maxGuard) {
+    guard += 1;
+    const type = types[index % types.length];
+    index += 1;
+    let item = null;
+    if (type === "custom") {
+      item = buildCustomTopicItem(preferences.customTopic, level, index);
+    } else {
+      item = pickCuratedItem(type, level, [...existingItems, ...fallback]);
+    }
+    const key = itemUniqKey(item);
+    if (!key || existingKeys.has(key)) continue;
+    existingKeys.add(key);
+    fallback.push(item);
+  }
+
+  let syntheticSerial = 1;
+  while (fallback.length < targetCount) {
+    const type = types[(index + fallback.length) % types.length] || "custom";
+    const synthetic = buildSyntheticItem(type, preferences.customTopic, level, syntheticSerial);
+    syntheticSerial += 1;
+    const key = itemUniqKey(synthetic);
+    if (!key || existingKeys.has(key)) {
+      index += 1;
+      continue;
+    }
+    existingKeys.add(key);
+    fallback.push(synthetic);
+  }
+
+  return fallback;
+}
+
+function pickCuratedItem(type, level, usedItems = []) {
+  const basePool = contentPool.filter((item) => item.type === type);
+  const extendedPool = isEnglishType(type)
+    ? dedupeContentItems([...basePool, ...ENGLISH_LIBRARY_POOL.filter((item) => item.type === type)])
+    : basePool;
+  const fallback = extendedPool;
   const preferred = fallback.filter((item) => item.level === level);
   const source = preferred.length ? preferred : fallback.length ? fallback : contentPool;
+  const usedKeys = new Set((Array.isArray(usedItems) ? usedItems : []).map(itemUniqKey));
 
   store.progress.typeCursor = store.progress.typeCursor || {};
   const cursor = Number(store.progress.typeCursor[type] || 0);
-  const item = source[cursor % source.length];
-  store.progress.typeCursor[type] = (cursor + 1) % source.length;
+  let item = source[cursor % source.length];
+
+  if (source.length > 1 && usedKeys.has(itemUniqKey(item))) {
+    for (let step = 1; step < source.length; step += 1) {
+      const candidate = source[(cursor + step) % source.length];
+      if (!usedKeys.has(itemUniqKey(candidate))) {
+        item = candidate;
+        break;
+      }
+    }
+  }
+
+  const finalIndex = source.findIndex((entry) => entry.id === item.id);
+  store.progress.typeCursor[type] = ((finalIndex >= 0 ? finalIndex : cursor) + 1) % source.length;
 
   return { ...item, source: "database" };
+}
+
+async function generateDailyContentWithArk(preferences, level, dailyCount) {
+  if (!ARK_API_KEY || !ARK_MODEL) {
+    return { ok: false, items: [] };
+  }
+
+  const learningTypes = normalizeLearningTypes(preferences.learningTypes);
+  const customTopic = String(preferences.customTopic || "").trim();
+  const newsContext = await buildHotNewsContext(learningTypes);
+  const todayLabel = formatDateKey(new Date());
+  const requestBody = {
+    model: ARK_MODEL,
+    temperature: 0.9,
+    top_p: 0.95,
+    max_tokens: 2200,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content: "你是中文每日学习内容生成助手。仅输出 JSON，不要输出任何解释文本。"
+      },
+      {
+        role: "user",
+        content: [
+          `请生成 ${dailyCount} 条学习内容，要求：`,
+          "1) 严格返回 JSON：{ \"items\": [...] }，items 长度必须等于请求条数。",
+          "2) 不得重复：headline 不能重复，内容角度不能重复。",
+          "3) 仅允许类型：spoken, vocabulary, finance, ai_news, custom。",
+          `4) 本次类型优先：${learningTypes.join(", ")}。可混合分配但必须覆盖用户选中类型。`,
+          `5) 难度等级：${level}（1-3）。spoken 与 vocabulary 难度要偏高、偏真实职场表达。`,
+          `6) finance 与 ai_news 必须是“${todayLabel} 当日热点事件概述”，禁止写宽泛概念性内容。`,
+          "7) finance/ai_news 每条必须包含 happenedAt(YYYY-MM-DD)、sourceName、sourceUrl 字段。",
+          "8) finance/ai_news 的 headline 必须能对应到给定新闻线索中的具体事件。",
+          `7) 如果类型为 custom，主题是：${customTopic || "用户自定义主题"}`,
+          newsContext ? `8) 当日新闻线索（优先基于这些线索生成）：\n${newsContext}` : "8) 若新闻线索为空，尽量生成当日可验证事件并给出来源链接。",
+          "9) 字段规则：",
+          "- spoken: {type, headline(英文口语), chinese, scene, example, summary, takeaway}",
+          "- vocabulary: {type, headline(英文单词/短语), phonetic, chinese, example, summary, takeaway}",
+          "- finance/ai_news: {type, headline, chinese, summary, takeaway, keywords, happenedAt, sourceName, sourceUrl}",
+          "- custom: {type, headline, chinese, summary, takeaway, keywords}",
+          "10) 文本自然、具体，不要模板化重复句式。"
+        ].join("\n")
+      }
+    ]
+  };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ARK_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${ARK_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${ARK_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      appendLog(`ARK 生成失败 HTTP ${response.status}`);
+      return { ok: false, items: [] };
+    }
+
+    const data = await response.json();
+    const raw = data?.choices?.[0]?.message?.content || "";
+    const parsed = safeParseJsonObject(raw);
+    const items = Array.isArray(parsed?.items) ? parsed.items : [];
+    const normalized = dedupeContentItems(items).slice(0, dailyCount);
+    return { ok: normalized.length > 0, items: normalized };
+  } catch (error) {
+    appendLog(`ARK 生成异常：${error.message}`);
+    return { ok: false, items: [] };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function buildHotNewsContext(learningTypes) {
+  const contexts = [];
+  if (learningTypes.includes("finance")) {
+    const financeNews = await fetchGoogleNewsRss("财经 OR 股市 OR 美联储 OR 纳斯达克 OR A股", 8);
+    if (financeNews.length) {
+      contexts.push(["[FINANCE]", ...financeNews.map((item, idx) => `${idx + 1}. ${item.title} | ${item.pubDate} | ${item.link}`)].join("\n"));
+    }
+  }
+  if (learningTypes.includes("ai_news")) {
+    const aiNews = await fetchGoogleNewsRss("人工智能 OR 大模型 OR OpenAI OR Anthropic OR Gemini OR AI Agent", 8);
+    if (aiNews.length) {
+      contexts.push(["[AI]", ...aiNews.map((item, idx) => `${idx + 1}. ${item.title} | ${item.pubDate} | ${item.link}`)].join("\n"));
+    }
+  }
+  return contexts.join("\n\n");
+}
+
+async function fetchGoogleNewsRss(query, limit = 8) {
+  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans`;
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "DailyLearningAssistant/1.0" }
+    });
+    if (!response.ok) return [];
+    const xml = await response.text();
+    const itemBlocks = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
+    const parsed = itemBlocks.map((block) => {
+      const title = xmlDecode(matchTag(block, "title"));
+      const link = matchTag(block, "link");
+      const pubDateRaw = matchTag(block, "pubDate");
+      const date = new Date(pubDateRaw);
+      return {
+        title: title.replace(/\s*-\s*Google 新闻$/i, "").trim(),
+        link: link.trim(),
+        pubDate: Number.isNaN(date.getTime()) ? formatDateKey(new Date()) : formatDateKey(date)
+      };
+    }).filter((item) => item.title && item.link);
+
+    return dedupeNews(parsed).slice(0, limit);
+  } catch (error) {
+    appendLog(`抓取新闻线索失败: ${error.message}`);
+    return [];
+  }
+}
+
+function dedupeNews(items) {
+  const seen = new Set();
+  const result = [];
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const key = normalizeLoose(item.title);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    result.push(item);
+  });
+  return result;
+}
+
+function matchTag(xml, tag) {
+  const reg = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, "i");
+  const matched = String(xml || "").match(reg);
+  return matched && matched[1] ? matched[1] : "";
+}
+
+function xmlDecode(value) {
+  return String(value || "")
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'");
+}
+
+function safeParseJsonObject(text) {
+  const source = String(text || "").trim();
+  if (!source) return {};
+  try {
+    return JSON.parse(source);
+  } catch {}
+
+  const fenceMatch = source.match(/```json\s*([\s\S]*?)```/i) || source.match(/```([\s\S]*?)```/i);
+  if (fenceMatch && fenceMatch[1]) {
+    try {
+      return JSON.parse(fenceMatch[1].trim());
+    } catch {}
+  }
+
+  const start = source.indexOf("{");
+  const end = source.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    try {
+      return JSON.parse(source.slice(start, end + 1));
+    } catch {}
+  }
+  return {};
+}
+
+function itemUniqKey(item) {
+  const type = normalizeItemType(item?.type);
+  const headline = normalizeLoose(String(item?.headline || ""));
+  const chinese = normalizeLoose(String(item?.chinese || ""));
+  const summary = normalizeLoose(String(item?.summary || ""));
+  return `${type}|${headline}|${chinese || summary}`;
+}
+
+function dedupeContentItems(items) {
+  const seen = new Set();
+  const result = [];
+  (Array.isArray(items) ? items : []).forEach((raw) => {
+    const item = normalizeContentItem(raw);
+    const key = itemUniqKey(item);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    result.push(item);
+  });
+  return result;
+}
+
+function buildSyntheticItem(type, topic, level, serial) {
+  if (type === "spoken") {
+    return normalizeContentItem({
+      id: createId(),
+      type: "spoken",
+      level,
+      headline: `Could we align on the priority before we proceed? #${serial}`,
+      chinese: "在继续之前，我们先对优先级达成一致可以吗？",
+      scene: "项目推进前对齐优先级",
+      example: "Could we align on the priority before we proceed so we avoid rework?",
+      summary: "高频职场沟通表达，强调先对齐再执行。",
+      takeaway: "用于会议推进和任务澄清。"
+    });
+  }
+  if (type === "vocabulary") {
+    return normalizeContentItem({
+      id: createId(),
+      type: "vocabulary",
+      level,
+      headline: `prioritize-${serial}`,
+      phonetic: "/praɪˈɔːrətaɪz/",
+      chinese: "确定优先级",
+      example: "We need to prioritize high-impact tasks this week.",
+      summary: "用于项目管理和时间管理语境。",
+      takeaway: "和 allocate、focus 常一起出现。"
+    });
+  }
+  if (type === "finance") {
+    return normalizeContentItem({
+      id: createId(),
+      type: "finance",
+      level,
+      headline: `Market Watch #${serial}: Risk sentiment shifts after key macro data`,
+      chinese: "关键宏观数据公布后，市场风险偏好出现切换",
+      summary: "当日关注重点是资金在防御和成长板块之间的轮动方向。",
+      takeaway: "先看数据是否超预期，再看成交量与板块扩散。",
+      happenedAt: formatDateKey(new Date()),
+      sourceName: "市场公开资讯聚合",
+      sourceUrl: "",
+      keywords: ["宏观数据", "风险偏好"]
+    });
+  }
+  if (type === "ai_news") {
+    return normalizeContentItem({
+      id: createId(),
+      type: "ai_news",
+      level,
+      headline: `AI Frontline #${serial}: Model efficiency optimization becomes the new battleground`,
+      chinese: "模型效率优化成为新一轮竞争焦点",
+      summary: "业界继续围绕推理成本、响应延迟和稳定性展开工程优化。",
+      takeaway: "评估方案时同时比较质量、成本和延迟三项指标。",
+      happenedAt: formatDateKey(new Date()),
+      sourceName: "AI 行业公开资讯聚合",
+      sourceUrl: "",
+      keywords: ["模型效率", "推理优化"]
+    });
+  }
+  return buildCustomTopicItem(topic, level, serial);
 }
 
 function buildCustomTopicItem(topic, level, index) {
@@ -606,87 +1061,74 @@ function buildCustomTopicItem(topic, level, index) {
 function buildQuizForSession(session) {
   const reviewItems = session.items.filter((item) => TYPE_META[item.type]?.reviewEligible).slice(0, 5);
   return {
-    questions: reviewItems.map((item, index) => buildQuestion(session.id, item, index))
+    questions: reviewItems.map((item, index) => buildChoiceQuestion(session.id, item, index)).filter(Boolean)
   };
 }
 
-function buildQuestion(sessionId, item, index) {
-  const variant = index % 3;
+function buildChoiceQuestion(sessionId, item, index) {
   const id = `${sessionId}-${index + 1}`;
 
   if (item.type === "spoken") {
     const spokenPool = contentPool.filter((entry) => entry.type === "spoken");
-    const distractors = shuffle(
+    let distractors = shuffle(
       spokenPool
         .filter((entry) => normalizeLoose(entry.chinese) !== normalizeLoose(item.chinese))
         .map((entry) => entry.chinese)
-    ).slice(0, 3);
-
-    if (variant === 0) {
-      return {
-        id,
-        type: "choice",
-        prompt: `这句口语更贴近哪一种中文含义？${item.headline}`,
-        answer: item.chinese,
-        options: shuffle([item.chinese, ...distractors]),
-        hint: item.scene || ""
-      };
+    ).slice(0, 6);
+    if (distractors.length < 3) {
+      const fallback = [
+        "这句话表示事情合理、有道理",
+        "这句话表示需要延期讨论",
+        "这句话表示仍在探索中"
+      ].filter((text) => normalizeLoose(text) !== normalizeLoose(item.chinese));
+      distractors = dedupeStrings([...distractors, ...fallback]).slice(0, 3);
     }
-
-    if (variant === 1) {
-      return {
-        id,
-        type: "text",
-        prompt: `把这句表达翻译成中文：${item.headline}`,
-        answer: item.chinese,
-        hint: item.scene || ""
-      };
-    }
-
     return {
       id,
-      type: "text",
-      prompt: `根据中文写出更自然的英文表达：${item.chinese}`,
-      answer: item.headline,
+      type: "choice",
+      prompt: `这句口语最贴近哪一个中文含义？${item.headline}`,
+      answer: item.chinese,
+      options: shuffle(dedupeStrings([item.chinese, ...distractors]).slice(0, 4)),
       hint: item.scene || ""
     };
   }
 
   const vocabularyPool = contentPool.filter((entry) => entry.type === "vocabulary");
-  const distractors = shuffle(
+  let distractors = shuffle(
     vocabularyPool
       .filter((entry) => normalizeLoose(entry.chinese) !== normalizeLoose(item.chinese))
       .map((entry) => entry.chinese)
-  ).slice(0, 3);
-
-  if (variant === 0) {
-    return {
-      id,
-      type: "choice",
-      prompt: `“${item.headline}” 的中文意思是什么？`,
-      answer: item.chinese,
-      options: shuffle([item.chinese, ...distractors]),
-      hint: item.phonetic || ""
-    };
+  ).slice(0, 6);
+  if (distractors.length < 3) {
+    const fallback = [
+      "有韧性的",
+      "可持续的",
+      "准确的",
+      "分配"
+    ].filter((text) => normalizeLoose(text) !== normalizeLoose(item.chinese));
+    distractors = dedupeStrings([...distractors, ...fallback]).slice(0, 3);
   }
-
-  if (variant === 1) {
-    return {
-      id,
-      type: "text",
-      prompt: `根据中文写出单词：${item.chinese}`,
-      answer: item.headline,
-      hint: item.phonetic || ""
-    };
-  }
-
   return {
     id,
-    type: "text",
-    prompt: `补全例句中的单词：${(item.example || "").replace(new RegExp(escapeRegExp(item.headline), "i"), "_____")}`,
-    answer: item.headline,
-    hint: item.chinese || ""
+    type: "choice",
+    prompt: `“${item.headline}” 最准确的中文释义是？`,
+    answer: item.chinese,
+    options: shuffle(dedupeStrings([item.chinese, ...distractors]).slice(0, 4)),
+    hint: item.phonetic || ""
   };
+}
+
+function dedupeStrings(values) {
+  const seen = new Set();
+  const result = [];
+  (Array.isArray(values) ? values : []).forEach((value) => {
+    const text = String(value || "").trim();
+    const key = normalizeLoose(text);
+    if (!text || seen.has(key)) return;
+    seen.add(key);
+    result.push(text);
+  });
+  return result;
 }
 
 function compareAnswer(input, answer) {
@@ -697,21 +1139,117 @@ function hasReviewableItems(items) {
   return items.some((item) => TYPE_META[normalizeItemType(item.type)]?.reviewEligible);
 }
 
-function runSchedulerCheck() {
-  const now = new Date();
-  const minuteKey = `${formatDateKey(now)} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  if (schedulerMinuteKey === minuteKey) return;
+function getSchedulerDateParts(now = new Date()) {
+  const timezone = process.env.SCHEDULER_TIMEZONE || process.env.APP_TIMEZONE || "Asia/Shanghai";
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).formatToParts(now);
+    const pick = (type) => parts.find((part) => part.type === type)?.value || "";
+    const y = pick("year");
+    const m = pick("month");
+    const d = pick("day");
+    const hh = pick("hour");
+    const mm = pick("minute");
+    if (y && m && d && hh && mm) {
+      return { dateKey: `${y}-${m}-${d}`, time: `${hh}:${mm}` };
+    }
+  } catch {}
+  return {
+    dateKey: formatDateKey(now),
+    time: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
+  };
+}
+
+function timeToMinutes(value) {
+  if (!/^\d{2}:\d{2}$/.test(String(value || ""))) return -1;
+  const [hh, mm] = String(value).split(":").map((part) => Number(part));
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return -1;
+  return hh * 60 + mm;
+}
+
+function toSchedulerDateKey(input) {
+  const date = input instanceof Date ? input : new Date(input);
+  if (Number.isNaN(date.getTime())) return "";
+  return getSchedulerDateParts(date).dateKey;
+}
+
+function hasDeliveryOnDate(user, slot, dateKey) {
+  const sessions = sortSessions(user.sessions || []);
+  return sessions.some((session) => {
+    const sentAt = session?.delivery?.[slot]?.sentAt;
+    if (!sentAt) return false;
+    return toSchedulerDateKey(sentAt) === dateKey;
+  });
+}
+
+async function runSchedulerCheck(options = {}) {
+  const parts = getSchedulerDateParts(new Date());
+  const minuteKey = `${parts.dateKey} ${parts.time}`;
+  if (!options.force && schedulerMinuteKey === minuteKey) {
+    return { skipped: true, reason: "same-minute", minuteKey };
+  }
   schedulerMinuteKey = minuteKey;
-  const currentTime = minuteKey.slice(-5);
+  const currentTime = parts.time;
+  const currentMinutes = timeToMinutes(currentTime);
+  let triggeredMorning = 0;
+  let triggeredEvening = 0;
+  const tasks = [];
 
   Object.values(store.users).forEach((user) => {
-    if (user.preferences.sendTime === currentTime) {
-      sendMorningLesson(user.email, "auto").catch((error) => appendLog(`${user.email} 的自动晨间推送失败：${error.message}`));
+    const sendTime = String(user?.preferences?.sendTime || "");
+    const reviewTime = String(user?.preferences?.reviewTime || "");
+    const sendMinutes = timeToMinutes(sendTime);
+    const reviewMinutes = timeToMinutes(reviewTime);
+
+    const shouldSendMorning =
+      sendMinutes >= 0 &&
+      currentMinutes >= sendMinutes &&
+      !hasDeliveryOnDate(user, "morning", parts.dateKey);
+
+    const shouldSendEvening =
+      Boolean(user?.preferences?.reviewEnabled) &&
+      reviewMinutes >= 0 &&
+      currentMinutes >= reviewMinutes &&
+      !hasDeliveryOnDate(user, "evening", parts.dateKey);
+
+    if (shouldSendMorning) {
+      triggeredMorning += 1;
+      tasks.push(
+        sendMorningLesson(user.email, "auto").catch((error) => {
+          appendLog(`${user.email} 的自动晨间推送失败：${error.message}`);
+        })
+      );
     }
-    if (user.preferences.reviewEnabled && user.preferences.reviewTime === currentTime) {
-      sendEveningReview(user.email, "auto").catch((error) => appendLog(`${user.email} 的自动晚间复盘失败：${error.message}`));
+    if (shouldSendEvening) {
+      triggeredEvening += 1;
+      tasks.push(
+        sendEveningReview(user.email, "auto").catch((error) => {
+          appendLog(`${user.email} 的自动晚间复盘失败：${error.message}`);
+        })
+      );
     }
   });
+
+  if (tasks.length) {
+    await Promise.allSettled(tasks);
+  }
+
+  return {
+    skipped: false,
+    minuteKey,
+    date: parts.dateKey,
+    time: parts.time,
+    users: Object.keys(store.users || {}).length,
+    triggeredMorning,
+    triggeredEvening
+  };
 }
 
 async function deliverEmail(to, mail) {
@@ -886,15 +1424,20 @@ function buildMimeMessage(options) {
   ].join("\r\n");
 }
 
+function sortItemsForDelivery(items, learningTypes) {
+  const list = Array.isArray(items) ? items.slice() : [];
+  const typeOrder = normalizeLearningTypes(learningTypes);
+  const orderMap = new Map(typeOrder.map((type, idx) => [type, idx]));
+  return list.sort((a, b) => {
+    const aIdx = orderMap.has(a.type) ? orderMap.get(a.type) : 999;
+    const bIdx = orderMap.has(b.type) ? orderMap.get(b.type) : 999;
+    if (aIdx !== bIdx) return aIdx - bIdx;
+    return String(a.headline || "").localeCompare(String(b.headline || ""));
+  });
+}
+
 function renderMorningEmail(session, email) {
   const baseUrl = getBaseUrl();
-  const completeUrl = buildTrackedLink(baseUrl, {
-    email,
-    sessionId: session.id,
-    slot: "morning",
-    action: "complete",
-    redirect: `/today?email=${encodeURIComponent(email)}`
-  });
   const dashboardUrl = buildTrackedLink(baseUrl, {
     email,
     sessionId: session.id,
@@ -903,16 +1446,11 @@ function renderMorningEmail(session, email) {
     redirect: `/today?email=${encodeURIComponent(email)}`
   });
   const pixelUrl = `${baseUrl}/api/email-open?email=${encodeURIComponent(email)}&sessionId=${encodeURIComponent(session.id)}&slot=morning`;
+  const orderedItems = sortItemsForDelivery(session.items, session.learningTypes);
 
-  const itemsHtml = session.items
+  const itemsHtml = orderedItems
     .map(
-      (item, index) => `
-        <div style="margin-bottom:16px;padding:16px;border-radius:20px;background:#ffffff;border:3px solid ${TYPE_META[item.type]?.accent || "#FF3AF2"};">
-          <div style="font-weight:800;font-size:18px;margin-bottom:8px;">${index + 1}. ${escapeHtml(item.headline)}</div>
-          <div style="font-size:13px;font-weight:700;color:#6b21a8;margin-bottom:8px;">${escapeHtml(labelForType(item.type))}</div>
-          <div style="color:#111827;line-height:1.7;">${escapeHtml(itemToEmailSummary(item))}</div>
-        </div>
-      `
+      (item, index) => `<div style="margin:0 0 8px;padding:8px 10px;border-radius:16px;background:#ffffff;border:3px solid ${TYPE_META[item.type]?.accent || "#FF3AF2"};"><div style="font-size:12px;font-weight:700;color:#6b21a8;line-height:1.25;margin:0 0 3px;">${escapeHtml(labelForType(item.type))}</div><div style="font-weight:800;font-size:16px;line-height:1.3;margin:0 0 3px;">${index + 1}. ${escapeHtml(item.headline)}</div><div style="color:#111827;line-height:1.45;margin:0;">${escapeHtml(itemToEmailSummary(item))}</div></div>`
     )
     .join("");
 
@@ -921,13 +1459,11 @@ function renderMorningEmail(session, email) {
       <div style="max-width:720px;margin:0 auto;background:#1d1038;border:4px solid #FFE600;border-radius:28px;padding:28px;box-shadow:12px 12px 0 #00F5D4;">
         <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#00F5D4;">Daily Learning Assistant</div>
         <h1 style="margin:10px 0 8px;font-size:32px;line-height:1.1;">今天的学习内容到了</h1>
-        <p style="margin:0 0 20px;color:#ddd6fe;">今天共生成 ${session.items.length} 条内容，难度等级 Level ${session.difficultyLevel}。</p>
+        <p style="margin:0 0 12px;color:#ddd6fe;">今天共生成 ${orderedItems.length} 条内容，难度等级 Level ${session.difficultyLevel}。</p>
         ${itemsHtml}
-        <div style="margin-top:24px;">
-          <a href="${completeUrl}" style="display:inline-block;margin-right:12px;padding:14px 20px;background:linear-gradient(90deg,#FF3AF2,#7B2FFF,#00F5D4);border:4px solid #FFE600;border-radius:999px;color:#ffffff;font-weight:800;text-decoration:none;">完成今日学习</a>
+        <div style="margin-top:14px;">
           <a href="${dashboardUrl}" style="display:inline-block;padding:14px 20px;background:#24124b;border:4px dashed #00F5D4;border-radius:999px;color:#ffffff;font-weight:800;text-decoration:none;">打开学习面板</a>
         </div>
-        <p style="margin:20px 0 0;color:#c4b5fd;">${session.reviewEligible ? "如果你开启了晚间复盘，系统会在设定时间发送测试。" : "本次内容不包含英语复盘，适合做轻量输入学习。"}</p>
       </div>
       <img src="${pixelUrl}" alt="" width="1" height="1" style="display:block;border:0;opacity:0;">
     </div>
@@ -935,9 +1471,10 @@ function renderMorningEmail(session, email) {
 }
 
 function renderMorningText(session, email) {
+  const orderedItems = sortItemsForDelivery(session.items, session.learningTypes);
   return [
-    `今日学习内容已生成，共 ${session.items.length} 条，难度 Level ${session.difficultyLevel}。`,
-    ...session.items.map((item, index) => `${index + 1}. [${labelForType(item.type)}] ${itemToTextSummary(item)}`),
+    `今日学习内容已生成，共 ${orderedItems.length} 条，难度 Level ${session.difficultyLevel}。`,
+    ...orderedItems.map((item, index) => `${index + 1}. [${labelForType(item.type)}] ${itemToTextSummary(item)}`),
     "",
     `打开学习面板：${getBaseUrl()}/today?email=${encodeURIComponent(email)}`
   ].join("\n");
@@ -1055,6 +1592,7 @@ function normalizePreferences(input) {
     dailyCount: normalizeDailyCount(input?.dailyCount ?? input?.lessonCount),
     learningTypes,
     customTopic: String(input?.customTopic || "").trim(),
+    petName: normalizePetName(input?.petName),
     sendTime: validTime(String(input?.sendTime || input?.morningTime || "")) || "07:30",
     reviewEnabled,
     reviewTime: validTime(String(input?.reviewTime || input?.eveningTime || "")) || "20:30",
@@ -1081,8 +1619,17 @@ function normalizeContentItem(item) {
     summary: String(item?.summary || ""),
     takeaway: String(item?.takeaway || ""),
     keywords: Array.isArray(item?.keywords) ? item.keywords.map((value) => String(value)) : [],
-    source: String(item?.source || "database")
+    source: String(item?.source || "database"),
+    happenedAt: String(item?.happenedAt || ""),
+    sourceName: String(item?.sourceName || ""),
+    sourceUrl: String(item?.sourceUrl || "")
   };
+}
+
+function normalizePetName(value) {
+  const name = String(value || "").trim();
+  if (!name) return "小闪电";
+  return name.slice(0, 20);
 }
 
 function normalizeSession(session) {
@@ -1123,7 +1670,8 @@ function normalizeSession(session) {
           score: Number(session.quizResult.score || 0),
           total: Number(session.quizResult.total || 0),
           accuracy: Number(session.quizResult.accuracy || 0),
-          answers: Array.isArray(session.quizResult.answers) ? session.quizResult.answers : []
+          answers: Array.isArray(session.quizResult.answers) ? session.quizResult.answers : [],
+          wrongItems: Array.isArray(session.quizResult.wrongItems) ? session.quizResult.wrongItems : []
         }
       : null,
     delivery: {
@@ -1145,6 +1693,96 @@ function normalizeDelivery(delivery) {
     clickedAt: delivery.clickedAt || null,
     mode: String(delivery.mode || "smtp")
   };
+}
+
+function buildEnglishLibraryPool() {
+  const spokenPairs = [
+    ["Let's align on priorities before we start.", "开始前先对齐优先级。", "会议开场对齐目标", "Let's align on priorities before we start so we can execute faster."],
+    ["Can we zoom in on the key blocker?", "我们可以聚焦到关键阻碍点吗？", "讨论卡点时", "Can we zoom in on the key blocker before discussing the rest?"],
+    ["I want to stress-test this plan.", "我想把这个方案做压力测试。", "评估方案风险时", "I want to stress-test this plan against a worst-case scenario."],
+    ["Could you walk me through your reasoning?", "你可以讲讲你的思路吗？", "请对方解释逻辑时", "Could you walk me through your reasoning step by step?"],
+    ["This approach doesn't scale well.", "这个方法扩展性不太好。", "评估长期方案时", "This approach doesn't scale well once traffic doubles."],
+    ["Let's keep this on the radar.", "这个事情先持续关注。", "暂不处理但需跟进", "Let's keep this on the radar and revisit next week."],
+    ["We should de-risk this first.", "我们应该先把这个风险降下来。", "执行前风险管理", "We should de-risk this first before rolling it out widely."],
+    ["Can we tighten the timeline?", "我们可以把时间线再收紧一点吗？", "排期优化时", "Can we tighten the timeline without hurting quality?"],
+    ["I'm not fully convinced yet.", "我目前还没有完全被说服。", "表达保留意见", "I'm not fully convinced yet—can we validate the assumptions?"],
+    ["Let's define the success criteria.", "先定义成功标准。", "制定验收标准", "Let's define the success criteria before implementation."],
+    ["Can we challenge this assumption?", "我们可以挑战一下这个假设吗？", "评审方案假设时", "Can we challenge this assumption with real user data?"],
+    ["Let's keep the scope realistic.", "我们把范围控制在现实可落地的程度。", "范围管理时", "Let's keep the scope realistic for this sprint."],
+    ["I can take ownership of this part.", "这部分我可以负责到底。", "分工认领任务时", "I can take ownership of this part and share updates daily."],
+    ["Could we simplify the workflow?", "我们可以把流程简化一下吗？", "流程过于复杂时", "Could we simplify the workflow to reduce handoffs?"],
+    ["Let's park this for now.", "这个先放一放。", "会议中暂缓议题", "Let's park this for now and revisit after the release."],
+    ["We need a clearer trade-off.", "我们需要更清晰的取舍。", "决策讨论时", "We need a clearer trade-off between speed and quality."],
+    ["I'm concerned about long-term maintenance.", "我担心长期维护成本。", "评估技术方案时", "I'm concerned about long-term maintenance if we choose this path."],
+    ["Can we split this into phases?", "我们可以把这个拆成分阶段推进吗？", "任务拆分时", "Can we split this into phases to reduce launch risk?"],
+    ["Let's validate this with users first.", "我们先用用户验证一下。", "做决策前验证", "Let's validate this with users first before scaling up."],
+    ["This needs tighter execution.", "这个执行还需要更严谨。", "复盘执行质量", "This needs tighter execution and clearer ownership."],
+    ["Could you share the latest status?", "你可以同步一下最新进展吗？", "项目跟进时", "Could you share the latest status before we proceed?"],
+    ["Let's align on expectations.", "我们先统一预期。", "合作启动阶段", "Let's align on expectations for timeline and quality."],
+    ["I suggest we revisit the baseline.", "我建议我们回到基线重新看一下。", "偏离目标时", "I suggest we revisit the baseline before adding more features."],
+    ["Can we make this decision reversible?", "这个决策可以做成可逆的吗？", "高风险决策时", "Can we make this decision reversible in case metrics drop?"]
+  ];
+
+  const vocabBase = [
+    ["differentiate", "/ˌdɪfəˈrenʃieɪt/", "区分；形成差异化", "We need to differentiate this product from competitors."],
+    ["mitigate", "/ˈmɪtɪɡeɪt/", "缓解，减轻", "We introduced safeguards to mitigate operational risk."],
+    ["leverage", "/ˈliːvərɪdʒ/", "利用（资源/优势）", "Let's leverage our existing data assets."],
+    ["feasible", "/ˈfiːzəbəl/", "可行的", "This schedule is ambitious but feasible."],
+    ["robust", "/roʊˈbʌst/", "稳健的", "We need a robust fallback strategy."],
+    ["iterate", "/ˈɪtəreɪt/", "迭代，反复改进", "We'll iterate on the prototype based on feedback."],
+    ["streamline", "/ˈstriːmlaɪn/", "精简，优化流程", "Automation helps streamline repetitive tasks."],
+    ["align", "/əˈlaɪn/", "对齐，一致", "The roadmap must align with business goals."],
+    ["diagnose", "/ˈdaɪəɡnoʊs/", "诊断，定位问题", "We need to diagnose the root cause quickly."],
+    ["validate", "/ˈvælɪdeɪt/", "验证", "Run experiments to validate the hypothesis."],
+    ["clarify", "/ˈklærəfaɪ/", "澄清", "Could you clarify the expected output format?"],
+    ["escalate", "/ˈeskəleɪt/", "升级处理", "Please escalate this issue if it blocks release."],
+    ["prioritize", "/praɪˈɔːrətaɪz/", "确定优先级", "We should prioritize tasks with higher impact."],
+    ["allocate", "/ˈæləkeɪt/", "分配", "Allocate more resources to user testing."],
+    ["synthesize", "/ˈsɪnθəsaɪz/", "综合归纳", "Try to synthesize the findings into three points."],
+    ["quantify", "/ˈkwɑːntɪfaɪ/", "量化", "Can we quantify the potential upside?"],
+    ["benchmark", "/ˈbentʃmɑːrk/", "对标", "Let's benchmark our latency against industry standards."],
+    ["optimize", "/ˈɑːptɪmaɪz/", "优化", "We need to optimize the onboarding flow."],
+    ["orchestrate", "/ˈɔːrkɪstreɪt/", "编排，统筹", "The platform orchestrates multiple services."],
+    ["deploy", "/dɪˈplɔɪ/", "部署", "We will deploy the patch tonight."],
+    ["refine", "/rɪˈfaɪn/", "打磨，改进", "Let's refine the messaging before launch."],
+    ["anticipate", "/ænˈtɪsɪpeɪt/", "预判", "We should anticipate edge cases early."],
+    ["stabilize", "/ˈsteɪbəlaɪz/", "稳定", "This change helps stabilize the system under load."],
+    ["audit", "/ˈɔːdɪt/", "审计", "The team will audit all access logs monthly."],
+    ["comply", "/kəmˈplaɪ/", "遵从", "We must comply with the latest data policy."],
+    ["triage", "/ˈtriːɑːʒ/", "分级处理", "Let's triage incoming bugs by severity."],
+    ["consolidate", "/kənˈsɑːlɪdeɪt/", "整合", "Consolidate duplicate workflows into one pipeline."],
+    ["facilitate", "/fəˈsɪlɪteɪt/", "促进", "The dashboard facilitates faster decision-making."],
+    ["execute", "/ˈeksɪkjuːt/", "执行", "We can execute this plan in two phases."],
+    ["retain", "/rɪˈteɪn/", "留存，保留", "Retention metrics improved after the redesign."]
+  ];
+
+  const spokenItems = spokenPairs.map((row, index) => normalizeContentItem({
+    id: `lib-spoken-${index + 1}`,
+    type: "spoken",
+    level: (index % 3) + 1,
+    headline: row[0],
+    chinese: row[1],
+    scene: row[2],
+    example: row[3],
+    summary: "面向真实工作场景的自然表达。",
+    takeaway: "重点掌握语气和使用时机。",
+    source: "library"
+  }));
+
+  const vocabularyItems = vocabBase.map((row, index) => normalizeContentItem({
+    id: `lib-voc-${index + 1}`,
+    type: "vocabulary",
+    level: (index % 3) + 1,
+    headline: row[0],
+    phonetic: row[1],
+    chinese: row[2],
+    example: row[3],
+    summary: "高频职场英语词汇。",
+    takeaway: "建议搭配固定语块记忆。",
+    source: "library"
+  }));
+
+  return [...spokenItems, ...vocabularyItems];
 }
 
 function seedStore() {
@@ -1180,7 +1818,12 @@ function seedContent() {
     { id: "finance-2", type: "finance", level: 1, headline: "Oil prices cool as traders reassess demand outlook", chinese: "交易员重新评估需求前景，油价回落", summary: "能源价格波动往往会传导到运输、制造与通胀预期。", takeaway: "阅读财经新闻时，先抓住“价格变化 + 原因 + 影响对象”三件事。", keywords: ["大宗商品", "通胀"] },
     { id: "finance-3", type: "finance", level: 2, headline: "Central bank signals patience on the next policy move", chinese: "央行释放观望信号，下一步政策动作更趋谨慎", summary: "利率路径不确定时，市场会更关注措辞、就业和通胀数据。", takeaway: "遇到政策类报道，重点看“是否超预期”和“未来路径”。", keywords: ["利率", "宏观政策"] },
     { id: "finance-4", type: "finance", level: 2, headline: "Consumer spending stays firm despite softer confidence", chinese: "消费者信心走弱，但消费支出仍有韧性", summary: "情绪指标与真实支出并不总是同步，零售数据更能体现短期韧性。", takeaway: "看经济新闻时，区分“情绪调查”和“真实数据”很重要。", keywords: ["消费", "零售"] },
-    { id: "finance-5", type: "finance", level: 3, headline: "Earnings guidance, not headline profit, drives stock reactions", chinese: "真正驱动股价反应的，常常不是利润本身，而是业绩指引", summary: "财报解读需要同时关注营收、利润率和管理层对未来季度的预期。", takeaway: "高阶阅读财经新闻时，要训练自己从“结果”转向“预期差”。", keywords: ["财报", "预期差"] }
+    { id: "finance-5", type: "finance", level: 3, headline: "Earnings guidance, not headline profit, drives stock reactions", chinese: "真正驱动股价反应的，常常不是利润本身，而是业绩指引", summary: "财报解读需要同时关注营收、利润率和管理层对未来季度的预期。", takeaway: "高阶阅读财经新闻时，要训练自己从“结果”转向“预期差”。", keywords: ["财报", "预期差"] },
+    { id: "ai-1", type: "ai_news", level: 1, headline: "Major model providers cut inference cost for long-context workloads", chinese: "多家大模型厂商下调长上下文推理成本", summary: "价格和吞吐优化推动企业把更多核心场景迁移到 API 生产环境。", takeaway: "关注“单位 token 成本 + 延迟 + 稳定性”这三项是否同时改善。", keywords: ["推理成本", "企业落地"] },
+    { id: "ai-2", type: "ai_news", level: 1, headline: "Open-source multimodal stacks accelerate private deployment", chinese: "开源多模态技术栈加速私有化部署", summary: "企业越来越倾向于“开源模型 + 自建数据管线”以平衡成本与可控性。", takeaway: "评估 AI 方案时，把“模型能力”与“工程可运维性”分开看。", keywords: ["开源模型", "私有化"] },
+    { id: "ai-3", type: "ai_news", level: 2, headline: "Agent orchestration becomes a bottleneck in production teams", chinese: "Agent 编排能力成为生产落地瓶颈", summary: "从单模型问答走向多 Agent 工作流后，监控、回滚、权限治理需求显著上升。", takeaway: "把 AI 项目当作软件工程系统建设，而不只是模型调用。", keywords: ["Agent", "工程治理"] },
+    { id: "ai-4", type: "ai_news", level: 2, headline: "Vendors race to ship retrieval tuning for domain-specific accuracy", chinese: "厂商竞相推出检索增强调优能力以提升垂直准确率", summary: "越来越多团队把效果提升重点放在检索质量、分块策略和重排模型上。", takeaway: "提升准确率时，优先优化“数据与检索”，再微调提示词。", keywords: ["RAG", "准确率"] },
+    { id: "ai-5", type: "ai_news", level: 3, headline: "AI governance standards tighten around data lineage and auditability", chinese: "AI 治理标准收紧，强调数据血缘与可审计性", summary: "监管和企业内控都在要求训练与推理链路可追踪、可解释、可复盘。", takeaway: "从早期就为日志、版本和审计留接口，避免后期返工。", keywords: ["治理", "合规"] }
   ];
 }
 
@@ -1192,7 +1835,12 @@ function itemToEmailSummary(item) {
     return `${item.chinese}｜场景：${item.scene}｜例句：${item.example}`;
   }
   if (item.type === "finance") {
-    return `${item.chinese}｜摘要：${item.summary}｜启发：${item.takeaway}`;
+    const sourcePart = [item.happenedAt, item.sourceName].filter(Boolean).join(" · ");
+    return `${item.chinese}｜摘要：${item.summary}｜启发：${item.takeaway}${sourcePart ? `｜来源：${sourcePart}` : ""}`;
+  }
+  if (item.type === "ai_news") {
+    const sourcePart = [item.happenedAt, item.sourceName].filter(Boolean).join(" · ");
+    return `${item.chinese || item.headline}｜摘要：${item.summary}｜启发：${item.takeaway}${sourcePart ? `｜来源：${sourcePart}` : ""}`;
   }
   return `${item.summary}｜启发：${item.takeaway}`;
 }
@@ -1205,7 +1853,10 @@ function itemToTextSummary(item) {
     return `${item.headline} | ${item.chinese} | ${item.scene}`;
   }
   if (item.type === "finance") {
-    return `${item.headline} | ${item.chinese} | ${item.summary}`;
+    return `${item.headline} | ${item.chinese} | ${item.summary} | ${item.happenedAt || ""} ${item.sourceName || ""}`.trim();
+  }
+  if (item.type === "ai_news") {
+    return `${item.headline} | ${item.chinese || ""} | ${item.summary} | ${item.happenedAt || ""} ${item.sourceName || ""}`.trim();
   }
   return `${item.headline} | ${item.summary}`;
 }
@@ -1223,9 +1874,9 @@ function normalizeEmail(value) {
 }
 
 function normalizeDailyCount(value) {
-  const count = Number(value || 3);
-  if (Number.isNaN(count)) return 3;
-  return Math.max(1, Math.min(6, count));
+  const count = Number(value || 5);
+  if (Number.isNaN(count)) return 5;
+  return Math.max(5, Math.min(10, count));
 }
 
 function normalizeLearningTypes(value) {
@@ -1238,7 +1889,7 @@ function normalizeLearningTypes(value) {
   const mapped = raw.flatMap((entry) => {
     const clean = String(entry || "").trim();
     if (!clean) return [];
-    if (clean === "all") return ["vocabulary", "spoken", "finance"];
+    if (clean === "all") return ["vocabulary", "spoken", "finance", "ai_news"];
     const mappedType = LEGACY_TYPE_MAP[clean];
     return mappedType ? [mappedType] : [];
   });
