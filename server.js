@@ -429,7 +429,8 @@ function getUser(email) {
 }
 
 async function sendMorningLesson(email, mode) {
-  const user = upsertUser({ email });
+  const cleanEmail = normalizeEmail(email);
+  const user = getUser(cleanEmail) || upsertUser({ email: cleanEmail });
   const today = formatDateKey(new Date());
   let session = sortSessions(user.sessions).find((item) => item.date === today);
 
@@ -473,7 +474,8 @@ async function sendMorningLesson(email, mode) {
 }
 
 async function sendEveningReview(email, mode) {
-  const user = upsertUser({ email });
+  const cleanEmail = normalizeEmail(email);
+  const user = getUser(cleanEmail) || upsertUser({ email: cleanEmail });
   const session = sortSessions(user.sessions)
     .map(normalizeSession)
     .find((item) => item.reviewEligible && !item.quizSentAt);
