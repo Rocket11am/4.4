@@ -1447,7 +1447,7 @@ function getSmtpConfig() {
 
 function smtpSend(options) {
   return new Promise((resolve, reject) => {
-    const timeoutMs = Number(process.env.SMTP_TIMEOUT_MS || 15000);
+    const timeoutMs = Number(process.env.SMTP_TIMEOUT_MS || 45000);
     let finished = false;
     const socket = options.secure
       ? tls.connect(options.port, options.host, { servername: options.host, rejectUnauthorized: false }, onConnected)
@@ -1540,6 +1540,8 @@ function smtpSend(options) {
 function buildMimeMessage(options) {
   const boundary = `BOUNDARY_${Date.now()}`;
   const encodedSubject = `=?UTF-8?B?${Buffer.from(options.subject).toString("base64")}?=`;
+  const plainTextBase64 = foldBase64(Buffer.from(String(options.text || ""), "utf8").toString("base64"));
+  const htmlBase64 = foldBase64(Buffer.from(String(options.html || ""), "utf8").toString("base64"));
   return [
     `From: ${options.from}`,
     `To: ${options.to}`,
@@ -1551,14 +1553,24 @@ function buildMimeMessage(options) {
     "Content-Type: text/plain; charset=UTF-8",
     "Content-Transfer-Encoding: base64",
     "",
-    Buffer.from(options.text).toString("base64"),
+    plainTextBase64,
     `--${boundary}`,
     "Content-Type: text/html; charset=UTF-8",
     "Content-Transfer-Encoding: base64",
     "",
-    Buffer.from(options.html).toString("base64"),
+    htmlBase64,
     `--${boundary}--`
   ].join("\r\n");
+}
+
+function foldBase64(input, lineLength = 76) {
+  const text = String(input || "");
+  if (!text) return "";
+  const lines = [];
+  for (let index = 0; index < text.length; index += lineLength) {
+    lines.push(text.slice(index, index + lineLength));
+  }
+  return lines.join("\r\n");
 }
 
 function sortItemsForDelivery(items, learningTypes) {
