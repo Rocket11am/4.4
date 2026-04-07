@@ -647,14 +647,12 @@ async function createSession(user, mode) {
 async function buildDailyContent(user, level) {
   const preferences = user.preferences || {};
   const types = normalizeLearningTypes(preferences.learningTypes);
-  const count = normalizeDailyCount(preferences.dailyCount);
+  const perTypeCount = normalizeDailyCount(preferences.dailyCount);
   const aiGenerationEnabled = CONTENT_GENERATION_MODE === "ai" || CONTENT_GENERATION_MODE === "hybrid";
-  const sequence = buildTypeSequence(types, count);
-  const targetTotal = sequence.length;
   const usedItems = [];
   const recentItems = collectRecentItems(user, 60);
-  const nonEnglishTypes = [...new Set(sequence.filter((type) => !isEnglishType(type)))];
-  const nonEnglishCount = sequence.filter((type) => !isEnglishType(type)).length;
+  const nonEnglishTypes = [...new Set(types.filter((type) => !isEnglishType(type)))];
+  const nonEnglishCount = nonEnglishTypes.length * perTypeCount;
   const aiResult = aiGenerationEnabled && nonEnglishCount
     ? await generateDailyContentWithArk({ ...preferences, learningTypes: nonEnglishTypes }, level, nonEnglishCount)
     : { ok: false, items: [] };
@@ -665,30 +663,56 @@ async function buildDailyContent(user, level) {
     aiPools.get(type).push(item);
   });
 
-  for (const type of sequence) {
-    let picked = null;
-    if (isEnglishType(type)) {
-      picked = pickCuratedItem(type, level, [...recentItems, ...usedItems]);
-    } else {
-      if (aiGenerationEnabled) {
-        picked = takeAiItemByType(type, aiPools, [...recentItems, ...usedItems]);
-      }
-      if (!picked) {
-        picked = pickCuratedItem(type, level, [...recentItems, ...usedItems]);
-      }
-      if (!picked) {
-        picked = buildSyntheticItem(type, preferences.customTopic, level, usedItems.length + 1);
-      }
-    }
-    if (!picked) continue;
-    const key = itemUniqKey(picked);
-    if (!key) continue;
-    if ([...recentItems, ...usedItems].some((item) => itemUniqKey(item) === key)) continue;
-    usedItems.push(picked);
-  }
+  const buckets = {};
+  const usedKeys = new Set((Array.isArray(recentItems) ? recentItems : []).map(itemUniqKey).filter(Boolean));
 
-  const fallbackItems = buildFallbackItems(preferences, level, targetTotal, [...recentItems, ...usedItems]);
-  const mergedItems = dedupeContentItems([...usedItems, ...fallbackItems]).slice(0, targetTotal);
+  types.forEach((type) => {
+    buckets[type] = [];
+    let syntheticSerial = 1;
+    let guard = 0;
+    const maxGuard = perTypeCount * 50;
+
+    while (buckets[type].length < perTypeCount && guard < maxGuard) {
+      guard += 1;
+      let picked = null;
+      const exclusion = [...recentItems, ...usedItems, ...buckets[type]];
+
+      if (isEnglishType(type)) {
+        picked = pickCuratedItem(type, level, exclusion);
+      } else {
+        if (aiGenerationEnabled) {
+          picked = takeAiItemByType(type, aiPools, exclusion);
+        }
+        if (!picked) {
+          picked = pickCuratedItem(type, level, exclusion);
+        }
+        if (!picked) {
+          picked = buildSyntheticItem(type, preferences.customTopic, level, syntheticSerial);
+          syntheticSerial += 1;
+        }
+      }
+
+      if (!picked) continue;
+      const key = itemUniqKey(picked);
+      if (!key || usedKeys.has(key)) continue;
+
+      usedKeys.add(key);
+      buckets[type].push(picked);
+      usedItems.push(picked);
+    }
+
+    while (buckets[type].length < perTypeCount) {
+      const synthetic = buildSyntheticItem(type, preferences.customTopic, level, syntheticSerial);
+      syntheticSerial += 1;
+      const key = itemUniqKey(synthetic);
+      if (!key || usedKeys.has(key)) continue;
+      usedKeys.add(key);
+      buckets[type].push(synthetic);
+      usedItems.push(synthetic);
+    }
+  });
+
+  const mergedItems = types.flatMap((type) => (buckets[type] || []).slice(0, perTypeCount));
 
   return {
     items: mergedItems.map(normalizeContentItem),
