@@ -1228,13 +1228,13 @@ async function runSchedulerCheck(options = {}) {
     const shouldSendMorning =
       sendMinutes >= 0 &&
       currentMinutes >= sendMinutes &&
-      !hasDeliveryOnDate(user, "morning", parts.dateKey);
+      (options.force || !hasDeliveryOnDate(user, "morning", parts.dateKey));
 
     const shouldSendEvening =
       Boolean(user?.preferences?.reviewEnabled) &&
       reviewMinutes >= 0 &&
       currentMinutes >= reviewMinutes &&
-      !hasDeliveryOnDate(user, "evening", parts.dateKey);
+      (options.force || !hasDeliveryOnDate(user, "evening", parts.dateKey));
 
     if (shouldSendMorning) {
       triggeredMorning += 1;
