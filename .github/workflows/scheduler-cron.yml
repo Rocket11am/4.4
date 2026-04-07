@@ -3,6 +3,9 @@ name: Trigger Vercel Scheduler
 on:
   schedule:
     - cron: "* * * * *"
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
