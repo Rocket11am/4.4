@@ -2109,7 +2109,7 @@ function normalizeEmail(value) {
 function normalizeDailyCount(value) {
   const count = Number(value || 5);
   if (Number.isNaN(count)) return 5;
-  return Math.max(5, Math.min(10, count));
+  return Math.max(1, Math.min(6, count));
 }
 
 function normalizeLearningTypes(value) {

@@ -15,6 +15,11 @@
   };
 
   var selectedTypes = ["spoken", "vocabulary"];
+  function normalizeDailyCount(value) {
+    var count = Number(value || 5);
+    if (Number.isNaN(count)) return 5;
+    return Math.max(1, Math.min(6, count));
+  }
 
   function syncTypes() {
     refs.typeButtons.forEach(function (button) {
@@ -44,7 +49,7 @@
   function fillForm(profile) {
     refs.email.value = profile.email || "";
     refs.petName.value = profile.petName || "";
-    refs.dailyCount.value = String(profile.dailyCount || 5);
+    refs.dailyCount.value = String(normalizeDailyCount(profile.dailyCount));
     refs.sendTime.value = profile.sendTime || "07:30";
     refs.reviewEnabled.value = String(Boolean(profile.reviewEnabled));
     refs.reviewTime.value = profile.reviewTime || "20:30";
@@ -70,7 +75,7 @@
       petName: refs.petName.value.trim(),
       customTopic: "",
       learningTypes: selectedTypes.slice(),
-      dailyCount: Number(refs.dailyCount.value || 5),
+      dailyCount: normalizeDailyCount(refs.dailyCount.value),
       sendTime: refs.sendTime.value || "07:30",
       reviewEnabled: refs.reviewEnabled.value === "true",
       reviewTime: refs.reviewTime.value || "20:30",
