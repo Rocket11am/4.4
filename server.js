@@ -407,17 +407,19 @@ function upsertUser(input) {
 
   const key = email.toLowerCase();
   const existing = store.users[key];
+  const updatedAt = new Date().toISOString();
   const preferences = normalizePreferences({
     ...existing?.preferences,
     ...input,
     email
   });
 
-  const user = existing || { email, preferences, sessions: [], currentLevel: 1 };
+  const user = existing || { email, preferences, sessions: [], currentLevel: 1, updatedAt };
   user.email = email;
   user.preferences = preferences;
   user.sessions = Array.isArray(user.sessions) ? user.sessions : [];
   user.currentLevel = deriveDifficultyLevel(user);
+  user.updatedAt = updatedAt;
   store.users[key] = user;
 
   appendLog(`${email} 更新了学习订阅配置`);
@@ -1345,11 +1347,14 @@ function toSchedulerDateKey(input) {
 function hasDeliveryOnDate(user, slot, dateKey, options = {}) {
   const sessions = sortSessions(user.sessions || []);
   const trigger = String(options?.trigger || "").trim();
+  const changedAfter = String(options?.changedAfter || "").trim();
+  const changedAfterMs = changedAfter ? new Date(changedAfter).getTime() : NaN;
   return sessions.some((session) => {
     const delivery = session?.delivery?.[slot];
     const sentAt = delivery?.sentAt;
     if (!sentAt) return false;
     if (trigger && String(delivery?.trigger || "").trim() !== trigger) return false;
+    if (Number.isFinite(changedAfterMs) && new Date(sentAt).getTime() < changedAfterMs) return false;
     return toSchedulerDateKey(sentAt) === dateKey;
   });
 }
@@ -1377,13 +1382,13 @@ async function runSchedulerCheck(options = {}) {
     const shouldSendMorning =
       sendMinutes >= 0 &&
       currentMinutes >= sendMinutes &&
-      (options.force || !hasDeliveryOnDate(user, "morning", parts.dateKey, { trigger: "auto" }));
+      (options.force || !hasDeliveryOnDate(user, "morning", parts.dateKey, { trigger: "auto", changedAfter: user?.updatedAt }));
 
     const shouldSendEvening =
       Boolean(user?.preferences?.reviewEnabled) &&
       reviewMinutes >= 0 &&
       currentMinutes >= reviewMinutes &&
-      (options.force || !hasDeliveryOnDate(user, "evening", parts.dateKey, { trigger: "auto" }));
+      (options.force || !hasDeliveryOnDate(user, "evening", parts.dateKey, { trigger: "auto", changedAfter: user?.updatedAt }));
 
     if (shouldSendMorning) {
       triggeredMorning += 1;
@@ -1764,7 +1769,8 @@ function normalizeStore(rawStore) {
       email,
       preferences: normalizePreferences({ ...user?.preferences, email }),
       sessions: Array.isArray(user?.sessions) ? user.sessions : [],
-      currentLevel: Number(user?.currentLevel || 1)
+      currentLevel: Number(user?.currentLevel || 1),
+      updatedAt: String(user?.updatedAt || "")
     };
   });
 
