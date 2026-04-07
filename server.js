@@ -650,6 +650,7 @@ async function buildDailyContent(user, level) {
   const count = normalizeDailyCount(preferences.dailyCount);
   const aiGenerationEnabled = CONTENT_GENERATION_MODE === "ai" || CONTENT_GENERATION_MODE === "hybrid";
   const sequence = buildTypeSequence(types, count);
+  const targetTotal = sequence.length;
   const usedItems = [];
   const recentItems = collectRecentItems(user, 60);
   const nonEnglishTypes = [...new Set(sequence.filter((type) => !isEnglishType(type)))];
@@ -686,8 +687,8 @@ async function buildDailyContent(user, level) {
     usedItems.push(picked);
   }
 
-  const fallbackItems = buildFallbackItems(preferences, level, count, [...recentItems, ...usedItems]);
-  const mergedItems = dedupeContentItems([...usedItems, ...fallbackItems]).slice(0, count);
+  const fallbackItems = buildFallbackItems(preferences, level, targetTotal, [...recentItems, ...usedItems]);
+  const mergedItems = dedupeContentItems([...usedItems, ...fallbackItems]).slice(0, targetTotal);
 
   return {
     items: mergedItems.map(normalizeContentItem),
