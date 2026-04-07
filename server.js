@@ -697,8 +697,10 @@ async function buildDailyContent(user, level) {
 
 function buildTypeSequence(types, count) {
   const sequence = [];
-  for (let index = 0; index < count; index += 1) {
-    sequence.push(types[index % types.length]);
+  for (const type of types) {
+    for (let index = 0; index < count; index += 1) {
+      sequence.push(type);
+    }
   }
   return sequence;
 }
@@ -1579,10 +1581,11 @@ function renderMorningEmail(session, email) {
   });
   const pixelUrl = `${baseUrl}/api/email-open?email=${encodeURIComponent(email)}&sessionId=${encodeURIComponent(session.id)}&slot=morning`;
   const orderedItems = sortItemsForDelivery(session.items, session.learningTypes);
+  const sentDate = formatDateKey(new Date());
 
   const itemsHtml = orderedItems
     .map(
-      (item, index) => `<div style="margin:0 0 8px;padding:8px 10px;border-radius:16px;background:#ffffff;border:3px solid ${TYPE_META[item.type]?.accent || "#FF3AF2"};"><div style="font-size:12px;font-weight:700;color:#6b21a8;line-height:1.25;margin:0 0 3px;">${escapeHtml(labelForType(item.type))}</div><div style="font-weight:800;font-size:16px;line-height:1.3;margin:0 0 3px;">${index + 1}. ${escapeHtml(item.headline)}</div><div style="color:#111827;line-height:1.45;margin:0;">${escapeHtml(itemToEmailSummary(item))}</div></div>`
+      (item, index) => `<div style="margin:0 0 8px;padding:8px 10px;border-radius:16px;background:#ffffff;border:3px solid ${TYPE_META[item.type]?.accent || "#FF3AF2"};"><div style="font-size:12px;font-weight:700;color:#6b21a8;line-height:1.25;margin:0 0 3px;">${escapeHtml(labelForType(item.type))}</div><div style="font-weight:800;font-size:16px;line-height:1.3;margin:0 0 3px;">${index + 1}. ${escapeHtml(item.headline)}</div><div style="color:#111827;line-height:1.45;margin:0;">${escapeHtml(itemToEmailSummary(item, sentDate))}</div></div>`
     )
     .join("");
 
@@ -1973,7 +1976,7 @@ function loadExternalContentLibraries() {
         summary: String(row?.summary || row?.content || "").trim(),
         takeaway: String(row?.takeaway || "建议关注事件成因与影响路径").trim(),
         happenedAt: formatDateKey(new Date()),
-        sourceName: String(row?.sourceName || "本地财经资讯库").trim(),
+        sourceName: String(row?.sourceName || "财经资讯").trim(),
         sourceUrl: String(row?.sourceUrl || "").trim(),
         source: "file-library"
       })
@@ -1988,7 +1991,7 @@ function loadExternalContentLibraries() {
         summary: String(row?.summary || row?.content || "").trim(),
         takeaway: String(row?.takeaway || "建议关注技术趋势与商业化进展").trim(),
         happenedAt: formatDateKey(new Date()),
-        sourceName: String(row?.sourceName || "本地AI资讯库").trim(),
+        sourceName: String(row?.sourceName || "AI咨询").trim(),
         sourceUrl: String(row?.sourceUrl || "").trim(),
         source: "file-library"
       })
@@ -2042,7 +2045,7 @@ function seedContent() {
   ];
 }
 
-function itemToEmailSummary(item) {
+function itemToEmailSummary(item, sentDate = "") {
   if (item.type === "vocabulary") {
     return `${item.headline}${item.phonetic ? ` ${item.phonetic}` : ""}｜${item.chinese}｜例句：${item.example}`;
   }
@@ -2050,11 +2053,11 @@ function itemToEmailSummary(item) {
     return `${item.chinese}｜场景：${item.scene}｜例句：${item.example}`;
   }
   if (item.type === "finance") {
-    const sourcePart = [item.happenedAt, item.sourceName].filter(Boolean).join(" · ");
+    const sourcePart = [sentDate || item.happenedAt, "财经资讯"].filter(Boolean).join(" · ");
     return `${item.chinese}｜摘要：${item.summary}｜启发：${item.takeaway}${sourcePart ? `｜来源：${sourcePart}` : ""}`;
   }
   if (item.type === "ai_news") {
-    const sourcePart = [item.happenedAt, item.sourceName].filter(Boolean).join(" · ");
+    const sourcePart = [sentDate || item.happenedAt, "AI咨询"].filter(Boolean).join(" · ");
     return `${item.chinese || item.headline}｜摘要：${item.summary}｜启发：${item.takeaway}${sourcePart ? `｜来源：${sourcePart}` : ""}`;
   }
   return `${item.summary}｜启发：${item.takeaway}`;
