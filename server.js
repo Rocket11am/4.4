@@ -17,6 +17,9 @@ const ARK_API_KEY = String(process.env.ARK_API_KEY || "").trim();
 const ARK_BASE_URL = String(process.env.ARK_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3").trim().replace(/\/$/, "");
 const ARK_MODEL = String(process.env.ARK_MODEL || process.env.ARK_ENDPOINT_ID || "").trim();
 const ARK_TIMEOUT_MS = Number(process.env.ARK_TIMEOUT_MS || 45000);
+const KV_REST_URL = String(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || "").trim().replace(/\/$/, "");
+const KV_REST_TOKEN = String(process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
+const STORE_KV_KEY = String(process.env.STORE_KV_KEY || "daily-learning-assistant:store:v1").trim();
 let ENGLISH_LIBRARY_POOL = [];
 
 const TYPE_META = {
@@ -51,9 +54,13 @@ ensureFile(STORE_PATH, JSON.stringify(seedStore(), null, 2));
 let store = normalizeStore(loadJson(STORE_PATH, seedStore()));
 let contentPool = normalizeContentPool(loadJson(CONTENT_PATH, seedContent()));
 let schedulerMinuteKey = "";
+let storeLoadPromise = null;
+let storeLoaded = false;
+let storePersistPromise = Promise.resolve();
 
 async function requestListener(req, res) {
   try {
+    await ensureStoreLoaded();
     const url = new URL(req.url, `http://${req.headers.host}`);
     if (url.pathname.startsWith("/api/")) {
       await handleApi(req, res, url);
@@ -135,31 +142,40 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const user = upsertUser(body);
     saveStore();
+    await waitForStorePersist();
     respondJson(res, 200, buildClientState(user.email));
     return;
   }
 
   if (req.method === "POST" && url.pathname === "/api/send/morning") {
     const body = await readBody(req);
-    respondJson(res, 200, await sendMorningLesson(body.email, "manual"));
+    const result = await sendMorningLesson(body.email, "manual");
+    await waitForStorePersist();
+    respondJson(res, 200, result);
     return;
   }
 
   if (req.method === "POST" && url.pathname === "/api/send/evening") {
     const body = await readBody(req);
-    respondJson(res, 200, await sendEveningReview(body.email, "manual"));
+    const result = await sendEveningReview(body.email, "manual");
+    await waitForStorePersist();
+    respondJson(res, 200, result);
     return;
   }
 
   if (req.method === "POST" && url.pathname === "/api/complete-session") {
     const body = await readBody(req);
-    respondJson(res, 200, completeSession(body));
+    const result = completeSession(body);
+    await waitForStorePersist();
+    respondJson(res, 200, result);
     return;
   }
 
   if (req.method === "POST" && url.pathname === "/api/quiz-submit") {
     const body = await readBody(req);
-    respondJson(res, 200, submitQuiz(body));
+    const result = submitQuiz(body);
+    await waitForStorePersist();
+    respondJson(res, 200, result);
     return;
   }
 
@@ -1190,6 +1206,7 @@ function hasDeliveryOnDate(user, slot, dateKey) {
 }
 
 async function runSchedulerCheck(options = {}) {
+  await ensureStoreLoaded();
   const parts = getSchedulerDateParts(new Date());
   const minuteKey = `${parts.dateKey} ${parts.time}`;
   if (!options.force && schedulerMinuteKey === minuteKey) {
@@ -1240,6 +1257,7 @@ async function runSchedulerCheck(options = {}) {
   if (tasks.length) {
     await Promise.allSettled(tasks);
   }
+  await waitForStorePersist();
 
   return {
     skipped: false,
@@ -2019,8 +2037,97 @@ function appendLog(message) {
   store.logs = store.logs.slice(-120);
 }
 
+function hasRemoteStore() {
+  return Boolean(KV_REST_URL && KV_REST_TOKEN);
+}
+
+async function kvGetJson(key) {
+  if (!hasRemoteStore()) return null;
+  const response = await fetch(`${KV_REST_URL}/get/${encodeURIComponent(key)}`, {
+    headers: { Authorization: `Bearer ${KV_REST_TOKEN}` }
+  });
+  if (!response.ok) {
+    throw new Error(`KV GET failed: ${response.status}`);
+  }
+  const data = await response.json();
+  if (typeof data?.result !== "string") return null;
+  try {
+    return JSON.parse(data.result);
+  } catch {
+    return null;
+  }
+}
+
+async function kvSetJson(key, value) {
+  if (!hasRemoteStore()) return;
+  const response = await fetch(`${KV_REST_URL}/pipeline`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${KV_REST_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify([["SET", key, JSON.stringify(value)]])
+  });
+  if (!response.ok) {
+    throw new Error(`KV SET failed: ${response.status}`);
+  }
+}
+
+function queueRemotePersist(snapshot) {
+  if (!hasRemoteStore()) return;
+  storePersistPromise = storePersistPromise
+    .catch(() => {})
+    .then(() => kvSetJson(STORE_KV_KEY, snapshot))
+    .catch((error) => {
+      console.error("[store persist]", error.message);
+    });
+}
+
+async function waitForStorePersist(timeoutMs = 3000) {
+  if (!hasRemoteStore()) return;
+  const timeoutPromise = new Promise((resolve) => setTimeout(resolve, timeoutMs));
+  await Promise.race([storePersistPromise.catch(() => {}), timeoutPromise]);
+}
+
+async function ensureStoreLoaded() {
+  if (storeLoaded) return;
+  if (storeLoadPromise) {
+    await storeLoadPromise;
+    return;
+  }
+  storeLoadPromise = (async () => {
+    if (!hasRemoteStore()) {
+      store = normalizeStore(loadJson(STORE_PATH, seedStore()));
+      storeLoaded = true;
+      return;
+    }
+    try {
+      const remote = await kvGetJson(STORE_KV_KEY);
+      if (remote && typeof remote === "object") {
+        store = normalizeStore(remote);
+      } else {
+        store = normalizeStore(loadJson(STORE_PATH, seedStore()));
+        await kvSetJson(STORE_KV_KEY, store);
+      }
+      saveStore();
+      await waitForStorePersist();
+      storeLoaded = true;
+    } catch (error) {
+      console.error("[store load fallback]", error.message);
+      store = normalizeStore(loadJson(STORE_PATH, seedStore()));
+      storeLoaded = true;
+    }
+  })();
+  await storeLoadPromise;
+}
+
 function saveStore() {
-  fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
+  try {
+    fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
+  } catch (error) {
+    console.error("[save store file]", error.message);
+  }
+  queueRemotePersist(store);
 }
 
 function loadJson(filePath, fallback) {
