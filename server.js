@@ -961,9 +961,19 @@ function safeParseJsonObject(text) {
 
 function itemUniqKey(item) {
   const type = normalizeItemType(item?.type);
-  const headline = normalizeLoose(String(item?.headline || ""));
+  const headline = normalizeLoose(
+    String(item?.headline || "")
+      .replace(/\s*#\d+\s*$/i, "")
+      .replace(/#\d+\s*:/i, ":")
+  );
   const chinese = normalizeLoose(String(item?.chinese || ""));
   const summary = normalizeLoose(String(item?.summary || ""));
+  if (type === "finance" || type === "ai_news") {
+    const sourceUrl = normalizeLoose(String(item?.sourceUrl || ""));
+    const sourceName = normalizeLoose(String(item?.sourceName || ""));
+    const happenedAt = normalizeLoose(String(item?.happenedAt || ""));
+    return `${type}|${headline || summary}|${sourceUrl || sourceName}|${happenedAt}|${summary}`;
+  }
   return `${type}|${headline}|${chinese || summary}`;
 }
 
@@ -1008,33 +1018,123 @@ function buildSyntheticItem(type, topic, level, serial) {
     });
   }
   if (type === "finance") {
+    const financeTemplates = [
+      {
+        headline: "Market Watch: Treasury yield volatility drives sector rotation",
+        chinese: "美债收益率波动引发板块轮动",
+        summary: "资金在高股息、防御和成长板块之间切换，市场风格出现短线再平衡。",
+        takeaway: "先看收益率方向，再看成交量确认资金流是否持续。",
+        keywords: ["美债收益率", "板块轮动"]
+      },
+      {
+        headline: "Macro Pulse: Inflation data reshapes rate-cut expectations",
+        chinese: "通胀数据重塑降息预期路径",
+        summary: "市场重新定价货币政策节奏，风险资产与避险资产同步波动。",
+        takeaway: "关注“是否超预期”与“下一次议息前的关键数据窗口”。",
+        keywords: ["通胀", "降息预期"]
+      },
+      {
+        headline: "Earnings Radar: Guidance revisions move valuations",
+        chinese: "业绩指引调整驱动估值变化",
+        summary: "企业前瞻指引比当期利润更影响市场定价，分化交易加剧。",
+        takeaway: "读财报要看“指引变化 + 利润率趋势 + 现金流质量”。",
+        keywords: ["财报", "估值"]
+      },
+      {
+        headline: "Commodity Brief: Energy and metals diverge on demand outlook",
+        chinese: "需求预期分化导致能源与金属走势背离",
+        summary: "大宗商品内部分化扩大，制造业与运输链条预期出现再定价。",
+        takeaway: "把商品价格变化映射到行业成本端，判断利润弹性。",
+        keywords: ["大宗商品", "需求预期"]
+      },
+      {
+        headline: "FX Focus: Dollar movement impacts cross-border risk appetite",
+        chinese: "美元波动影响跨市场风险偏好",
+        summary: "汇率变化牵引全球资金配置，外资流向与估值敏感度提升。",
+        takeaway: "观察美元指数与风险资产同步性，识别短线风险窗口。",
+        keywords: ["汇率", "资金流向"]
+      },
+      {
+        headline: "Policy Tracker: Fiscal headlines trigger short-term repricing",
+        chinese: "财政政策消息触发短期再定价",
+        summary: "政策预期变化先影响利率和信用利差，再传导至权益市场。",
+        takeaway: "先看政策落地概率，再看市场是否提前交易预期。",
+        keywords: ["财政政策", "信用利差"]
+      }
+    ];
+    const pick = financeTemplates[(Math.max(1, Number(serial || 1)) - 1) % financeTemplates.length];
     return normalizeContentItem({
       id: createId(),
       type: "finance",
       level,
-      headline: `Market Watch #${serial}: Risk sentiment shifts after key macro data`,
-      chinese: "关键宏观数据公布后，市场风险偏好出现切换",
-      summary: "当日关注重点是资金在防御和成长板块之间的轮动方向。",
-      takeaway: "先看数据是否超预期，再看成交量与板块扩散。",
+      headline: pick.headline,
+      chinese: pick.chinese,
+      summary: pick.summary,
+      takeaway: pick.takeaway,
       happenedAt: formatDateKey(new Date()),
       sourceName: "市场公开资讯聚合",
       sourceUrl: "",
-      keywords: ["宏观数据", "风险偏好"]
+      keywords: pick.keywords
     });
   }
   if (type === "ai_news") {
+    const aiTemplates = [
+      {
+        headline: "AI Frontline: Inference cost competition accelerates enterprise adoption",
+        chinese: "推理成本竞争加速企业级落地",
+        summary: "模型服务商围绕吞吐和延迟优化展开竞争，企业部署门槛进一步降低。",
+        takeaway: "比较方案时同时看质量、成本和SLA稳定性。",
+        keywords: ["推理成本", "企业落地"]
+      },
+      {
+        headline: "AI Frontline: Agent observability becomes a production bottleneck",
+        chinese: "Agent 可观测性成为生产环境瓶颈",
+        summary: "多Agent流程放大了日志追踪、回滚和权限治理的复杂度。",
+        takeaway: "先建监控与审计，再扩展智能体工作流。",
+        keywords: ["Agent", "可观测性"]
+      },
+      {
+        headline: "AI Frontline: Multimodal pipelines focus on latency and reliability",
+        chinese: "多模态管线开始聚焦时延与稳定性",
+        summary: "图文音视频联合推理从“能跑”转向“可稳定交付”。",
+        takeaway: "把延迟预算和失败重试策略前置到架构设计阶段。",
+        keywords: ["多模态", "稳定性"]
+      },
+      {
+        headline: "AI Frontline: Retrieval quality drives domain-specific accuracy gains",
+        chinese: "检索质量成为垂直准确率提升关键",
+        summary: "行业应用从调提示词转向优化数据分块、召回和重排策略。",
+        takeaway: "优先做数据与检索工程，再谈模型升级。",
+        keywords: ["RAG", "准确率"]
+      },
+      {
+        headline: "AI Frontline: Governance and audit requirements tighten in deployments",
+        chinese: "上线系统对治理与审计要求持续收紧",
+        summary: "企业对数据血缘、模型版本与输出可追溯提出更高要求。",
+        takeaway: "从第一天开始保留审计日志，减少后期合规返工。",
+        keywords: ["治理", "合规"]
+      },
+      {
+        headline: "AI Frontline: Open model ecosystems speed up private deployments",
+        chinese: "开源模型生态推动私有化部署提速",
+        summary: "企业更倾向“开源模型 + 自建工程栈”实现可控成本与可运维性。",
+        takeaway: "评估开源方案时重点看社区活跃度与工程工具链成熟度。",
+        keywords: ["开源模型", "私有化"]
+      }
+    ];
+    const pick = aiTemplates[(Math.max(1, Number(serial || 1)) - 1) % aiTemplates.length];
     return normalizeContentItem({
       id: createId(),
       type: "ai_news",
       level,
-      headline: `AI Frontline #${serial}: Model efficiency optimization becomes the new battleground`,
-      chinese: "模型效率优化成为新一轮竞争焦点",
-      summary: "业界继续围绕推理成本、响应延迟和稳定性展开工程优化。",
-      takeaway: "评估方案时同时比较质量、成本和延迟三项指标。",
+      headline: pick.headline,
+      chinese: pick.chinese,
+      summary: pick.summary,
+      takeaway: pick.takeaway,
       happenedAt: formatDateKey(new Date()),
       sourceName: "AI 行业公开资讯聚合",
       sourceUrl: "",
-      keywords: ["模型效率", "推理优化"]
+      keywords: pick.keywords
     });
   }
   return buildCustomTopicItem(topic, level, serial);
