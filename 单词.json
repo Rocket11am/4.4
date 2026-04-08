@@ -1,0 +1,182 @@
+[
+  {
+    "word": "allocate",
+    "phonetic": "/ˈæləkeɪt/",
+    "translation": "分配资源",
+    "example": "The company allocated significant funds to AI research."
+  },
+  {
+    "word": "articulate",
+    "phonetic": "/ɑːˈtɪkjuleɪt/",
+    "translation": "清晰表达",
+    "example": "She articulated her ideas with clarity and confidence."
+  },
+  {
+    "word": "assert",
+    "phonetic": "/əˈsɜːt/",
+    "translation": "断言",
+    "example": "He asserted that the strategy would work."
+  },
+  {
+    "word": "bolster",
+    "phonetic": "/ˈbəʊlstə/",
+    "translation": "增强、支持",
+    "example": "The new policy aims to bolster economic growth."
+  },
+  {
+    "word": "coherent",
+    "phonetic": "/kəʊˈhɪərənt/",
+    "translation": "连贯的",
+    "example": "His argument was clear and coherent."
+  },
+  {
+    "word": "compelling",
+    "phonetic": "/kəmˈpelɪŋ/",
+    "translation": "令人信服的",
+    "example": "She gave a compelling reason to change the plan."
+  },
+  {
+    "word": "constrain",
+    "phonetic": "/kənˈstreɪn/",
+    "translation": "限制",
+    "example": "Budget limits constrained the project."
+  },
+  {
+    "word": "contend",
+    "phonetic": "/kənˈtend/",
+    "translation": "主张",
+    "example": "Some experts contend that AI will reshape industries."
+  },
+  {
+    "word": "convey",
+    "phonetic": "/kənˈveɪ/",
+    "translation": "传达",
+    "example": "His tone conveyed a sense of urgency."
+  },
+  {
+    "word": "correlate",
+    "phonetic": "/ˈkɒrəleɪt/",
+    "translation": "相关联",
+    "example": "Income levels often correlate with education."
+  },
+  {
+    "word": "crucial",
+    "phonetic": "/ˈkruːʃəl/",
+    "translation": "至关重要的",
+    "example": "Timing is crucial in negotiations."
+  },
+  {
+    "word": "cumulative",
+    "phonetic": "/ˈkjuːmjələtɪv/",
+    "translation": "累积的",
+    "example": "The cumulative effect of small changes is significant."
+  },
+  {
+    "word": "deduce",
+    "phonetic": "/dɪˈdjuːs/",
+    "translation": "推断",
+    "example": "We can deduce the cause from the data."
+  },
+  {
+    "word": "diminish",
+    "phonetic": "/dɪˈmɪnɪʃ/",
+    "translation": "减少",
+    "example": "Confidence may diminish under pressure."
+  },
+  {
+    "word": "disrupt",
+    "phonetic": "/dɪsˈrʌpt/",
+    "translation": "颠覆",
+    "example": "Technology continues to disrupt traditional industries."
+  },
+  {
+    "word": "diverge",
+    "phonetic": "/daɪˈvɜːdʒ/",
+    "translation": "分歧",
+    "example": "Their opinions began to diverge over time."
+  },
+  {
+    "word": "emphasize",
+    "phonetic": "/ˈemfəsaɪz/",
+    "translation": "强调",
+    "example": "The report emphasizes long-term strategy."
+  },
+  {
+    "word": "entail",
+    "phonetic": "/ɪnˈteɪl/",
+    "translation": "意味着",
+    "example": "The project entails significant risks."
+  },
+  {
+    "word": "exhibit",
+    "phonetic": "/ɪɡˈzɪbɪt/",
+    "translation": "表现出",
+    "example": "The data exhibits a clear pattern."
+  },
+  {
+    "word": "facilitate",
+    "phonetic": "/fəˈsɪlɪteɪt/",
+    "translation": "促进",
+    "example": "Technology facilitates communication."
+  },
+  {
+    "word": "fluctuate",
+    "phonetic": "/ˈflʌktʃueɪt/",
+    "translation": "波动",
+    "example": "Prices fluctuate based on demand."
+  },
+  {
+    "word": "generate",
+    "phonetic": "/ˈdʒenəreɪt/",
+    "translation": "产生",
+    "example": "The system generates valuable insights."
+  },
+  {
+    "word": "incentivize",
+    "phonetic": "/ɪnˈsentɪvaɪz/",
+    "translation": "激励",
+    "example": "Companies incentivize innovation through rewards."
+  },
+  {
+    "word": "inevitable",
+    "phonetic": "/ɪnˈevɪtəbl/",
+    "translation": "不可避免的",
+    "example": "Change is inevitable in fast-moving industries."
+  },
+  {
+    "word": "justify",
+    "phonetic": "/ˈdʒʌstɪfaɪ/",
+    "translation": "证明合理",
+    "example": "The results justify the investment."
+  },
+  {
+    "word": "leverage",
+    "phonetic": "/ˈliːvərɪdʒ/",
+    "translation": "利用优势",
+    "example": "They leverage data to improve decisions."
+  },
+  {
+    "word": "optimize",
+    "phonetic": "/ˈɒptɪmaɪz/",
+    "translation": "优化",
+    "example": "We need to optimize the process."
+  },
+  {
+    "word": "reinforce",
+    "phonetic": "/ˌriːɪnˈfɔːs/",
+    "translation": "强化",
+    "example": "This evidence reinforces our conclusion."
+  },
+  {
+    "word": "substantiate",
+    "phonetic": "/səbˈstænʃieɪt/",
+    "translation": "证实",
+    "example": "The claim needs data to substantiate it."
+  },
+  {
+    "word": "sustain",
+    "phonetic": "/səˈsteɪn/",
+    "translation": "维持",
+    "example": "It is hard to sustain growth over time."
+  }
+]

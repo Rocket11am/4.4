@@ -1,0 +1,142 @@
+[
+  {
+    "id": 1,
+    "expression": "I'm not entirely sold on that.",
+    "translation": "我还没完全被说服 / 我不太认同",
+    "scenario": "委婉表达不同意见（讨论/工作场景）",
+    "example": "I see your point, but I'm not entirely sold on that idea."
+  },
+  {
+    "id": 2,
+    "expression": "I wouldn't go that far.",
+    "translation": "我不会这么说 / 没那么夸张",
+    "scenario": "对方说得太绝对，降温",
+    "example": "It's a good plan, but I wouldn't go that far."
+  },
+  {
+    "id": 3,
+    "expression": "That's a bit of a stretch.",
+    "translation": "有点牵强",
+    "scenario": "对方推理过头",
+    "example": "Saying this will fix everything is a bit of a stretch."
+  },
+  {
+    "id": 4,
+    "expression": "I see where you're coming from, but...",
+    "translation": "我理解你，但是…",
+    "scenario": "礼貌反对",
+    "example": "I see where you're coming from, but we need more data."
+  },
+  {
+    "id": 5,
+    "expression": "That doesn't sit right with me.",
+    "translation": "我觉得不太对劲",
+    "scenario": "表达直觉上的不认可",
+    "example": "Something about that decision doesn't sit right with me."
+  },
+  {
+    "id": 6,
+    "expression": "I'm on the fence about it.",
+    "translation": "我还在犹豫",
+    "scenario": "尚未决定",
+    "example": "I'm on the fence about whether to take the offer."
+  },
+  {
+    "id": 7,
+    "expression": "That checks out.",
+    "translation": "说得通",
+    "scenario": "确认逻辑合理",
+    "example": "Your explanation checks out."
+  },
+  {
+    "id": 8,
+    "expression": "Let me get this straight...",
+    "translation": "让我确认一下你的意思",
+    "scenario": "整理对方逻辑",
+    "example": "Let me get this straight—you want us to redo everything?"
+  },
+  {
+    "id": 9,
+    "expression": "I hadn't thought of it that way.",
+    "translation": "我之前没这么想过",
+    "scenario": "接受新观点",
+    "example": "That's interesting. I hadn't thought of it that way."
+  },
+  {
+    "id": 10,
+    "expression": "That puts things into perspective.",
+    "translation": "这让我更清楚地看待问题",
+    "scenario": "获得新认知",
+    "example": "Hearing that really puts things into perspective."
+  },
+  {
+    "id": 11,
+    "expression": "I don't have a strong opinion either way.",
+    "translation": "我没有特别倾向",
+    "scenario": "表达中立",
+    "example": "I don't have a strong opinion either way—both are fine."
+  },
+  {
+    "id": 12,
+    "expression": "I'm leaning toward that option.",
+    "translation": "我偏向这个",
+    "scenario": "表达倾向",
+    "example": "I'm leaning toward the cheaper plan."
+  },
+  {
+    "id": 13,
+    "expression": "That's easier said than done.",
+    "translation": "说起来容易做起来难",
+    "scenario": "现实困难",
+    "example": "Saving money is easier said than done."
+  },
+  {
+    "id": 14,
+    "expression": "I wouldn't rule it out.",
+    "translation": "不排除这个可能",
+    "scenario": "保留可能性",
+    "example": "I wouldn't rule it out—we might try it."
+  },
+  {
+    "id": 15,
+    "expression": "That could go either way.",
+    "translation": "结果不好说",
+    "scenario": "不确定结果",
+    "example": "This deal could go either way."
+  },
+  {
+    "id": 16,
+    "expression": "I'm still wrapping my head around it.",
+    "translation": "我还在消化",
+    "scenario": "信息复杂",
+    "example": "Give me a minute—I'm still wrapping my head around it."
+  },
+  {
+    "id": 17,
+    "expression": "That's one way to look at it.",
+    "translation": "这也是一种看法",
+    "scenario": "不完全认同",
+    "example": "That's one way to look at it, I guess."
+  },
+  {
+    "id": 18,
+    "expression": "I'm not opposed to it.",
+    "translation": "我不反对",
+    "scenario": "开放态度",
+    "example": "I'm not opposed to the idea."
+  },
+  {
+    "id": 19,
+    "expression": "It's a long shot, but...",
+    "translation": "希望不大，但…",
+    "scenario": "尝试低概率事件",
+    "example": "It's a long shot, but we might win."
+  },
+  {
+    "id": 20,
+    "expression": "Let's not jump to conclusions.",
+    "translation": "别急着下结论",
+    "scenario": "提醒冷静",
+    "example": "Let's not jump to conclusions—we need more info."
+  }
+]

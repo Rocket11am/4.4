@@ -1,0 +1,16 @@
+{
+  "smtp": {
+    "enabled": false,
+    "host": "smtp.qq.com",
+    "port": 465,
+    "secure": true,
+    "user": "",
+    "pass": "",
+    "from": ""
+  },
+  "logs": [],
+  "progress": {
+    "typeCursor": {}
+  },
+  "users": {}
+}

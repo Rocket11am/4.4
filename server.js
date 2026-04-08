@@ -4,7 +4,13 @@ const path = require("path");
 const tls = require("tls");
 const net = require("net");
 const { URL } = require("url");
-const { Redis } = require("@upstash/redis");
+let Redis = null;
+let upstashLoadError = "";
+try {
+  ({ Redis } = require("@upstash/redis"));
+} catch (error) {
+  upstashLoadError = String(error && error.message ? error.message : error || "load-failed");
+}
 
 const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
@@ -22,7 +28,19 @@ const CONTENT_GENERATION_MODE = String(process.env.CONTENT_GENERATION_MODE || "l
 const KV_REST_URL = String(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || "").trim().replace(/\/$/, "");
 const KV_REST_TOKEN = String(process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
 const STORE_KV_KEY = String(process.env.STORE_KV_KEY || "daily-learning-assistant:store:v1").trim();
-const remoteStoreClient = KV_REST_URL && KV_REST_TOKEN ? new Redis({ url: KV_REST_URL, token: KV_REST_TOKEN }) : null;
+let remoteStoreClient = null;
+let remoteStoreBootError = "";
+if (KV_REST_URL && KV_REST_TOKEN) {
+  if (!Redis) {
+    remoteStoreBootError = upstashLoadError || "upstash-sdk-not-available";
+  } else {
+    try {
+      remoteStoreClient = new Redis({ url: KV_REST_URL, token: KV_REST_TOKEN });
+    } catch (error) {
+      remoteStoreBootError = String(error && error.message ? error.message : error || "upstash-client-init-failed");
+    }
+  }
+}
 let ENGLISH_LIBRARY_POOL = [];
 let EXTERNAL_LIBRARY_POOL = { spoken: [], vocabulary: [], finance: [], ai_news: [] };
 
@@ -62,7 +80,7 @@ let schedulerMinuteKey = "";
 let storeLoadPromise = null;
 let storeLoaded = false;
 let storePersistPromise = Promise.resolve();
-let lastStoreError = "";
+let lastStoreError = remoteStoreBootError || "";
 
 async function requestListener(req, res) {
   try {
